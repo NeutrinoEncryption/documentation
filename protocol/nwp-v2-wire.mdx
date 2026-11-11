@@ -1,0 +1,106 @@
+---
+title: "NWP v2 Wire Framing"
+description: "Byte-level specification of the 24-byte binary frame header, frame type registry, and protocol flags."
+---
+
+## Wire Format Overview
+
+All binary communications across direct QUIC streams, oblivious fallback relays, and local IPC boundaries adhere to the fixed 24-byte **NWP v2** header format.
+
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Magic: 0x4E575032 ("NWP2")              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   FrameType   |     Flags     |           StreamID            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Sequence Number                         |
+|                          (64-bit)                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Payload Length                         |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                  Encrypted Payload (Variable)                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                  Poly1305 / BLAKE3 MAC Tag                    |
+|                          (16 Bytes)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+---
+
+## Header Fields
+
+| Field | Size | Type | Description |
+| :--- | :--- | :--- | :--- |
+| **Magic** | 4 Bytes | Big-Endian `u32` | Protocol identifier: `0x4E575032` (ASCII `"NWP2"`). Non-matching bytes trigger instant disconnect (`InvalidMagic`). |
+| **FrameType** | 1 Byte | `u8` | Discriminant identifying the operational subsystem and payload schema. |
+| **Flags** | 1 Byte | `u8` (Bitfield) | Operational attributes (compression, urgency, fragmentation, encryption). |
+| **StreamID** | 2 Bytes | Big-Endian `u16` | Multiplexed logical virtual stream identifier. |
+| **Sequence Number** | 8 Bytes | Big-Endian `u64` | Monotonically incrementing per-session sequence counter. Used in nonce derivation. |
+| **Payload Length** | 4 Bytes | Big-Endian `u32` | Length of payload bytes in octets (excluding 24-byte header and 16-byte MAC tag). Max: 64 MB. |
+| **MAC Tag** | 16 Bytes | `[u8; 16]` | Authenticated AEAD Poly1305 tag or keyed BLAKE3 header verification tag. |
+
+---
+
+## FrameType Registry
+
+Discriminants are partitioned into operational functional blocks:
+
+```rust
+#[repr(u8)]
+pub enum FrameType {
+    // Handshake Channel (0x01 - 0x0F)
+    HandshakeInit      = 0x01,
+    HandshakeResp      = 0x02,
+    HandshakeAck       = 0x03,
+
+    // Ephemeral Beam Transfer (0x10 - 0x1F)
+    TransferManifest   = 0x10,
+    ChunkRequest       = 0x11,
+    ChunkData          = 0x12,
+    ChunkAck           = 0x13,
+    TransferComplete   = 0x16,
+
+    // Continuous Swarm Sync (0x20 - 0x2F)
+    SwarmAnnounce      = 0x20,
+    SwarmWantChunks    = 0x21,
+    SwarmMutation      = 0x22,
+
+    // Virtual Mesh Tunnel (0x30 - 0x3F)
+    TunnelDatagram     = 0x30,
+
+    // Singularity Git Channel (0x40 - 0x4F)
+    GitUploadPack      = 0x40,
+    GitReceivePack     = 0x41,
+
+    // Media & Messaging (0x50 - 0x6F)
+    MediaDatagram      = 0x50,
+    ChatMessage        = 0x60,
+
+    // Diagnostics & Control (0xEE - 0xFF)
+    HeartbeatPing      = 0xEE,
+    HeartbeatPong      = 0xEF,
+    SessionClose       = 0xFF,
+}
+```
+
+---
+
+## Flags Bitfield
+
+| Bit | Name | Hex | Description |
+| :--- | :--- | :--- | :--- |
+| `0` | `COMPRESSED` | `0x01` | Payload is compressed with streaming `zstd` level 3. |
+| `1` | `URGENT` | `0x02` | Out-of-band high-priority frame (bypasses flow queues). |
+| `2` | `CONTINUATION` | `0x04` | Frame is a fragmented continuation segment. |
+| `3` | `ENCRYPTED_INNER` | `0x08` | Inner payload is encrypted with session AEAD keys. |
+| `4` | `PADDING` | `0x10` | Payload includes padding to prevent traffic-analysis length leakage. |
+
+---
+
+## Serialization Invariants
+
+1. **Zero-Copy Parsing**: Framing buffers use `bytes::Bytes` and `bytes::BufMut` slices. Frame parsing produces cheap reference-counted windows rather than copying underlying data.
+2. **Bounds Protection**: A frame payload cannot exceed 67,108,864 bytes (64 MB). Deserializers rejecting over-sized frames emit `ProtocolError::PayloadTooLarge` immediately.
+3. **Anti-Replay Validation**: Frames are validated against an anti-replay sliding bitmask tracking the latest 1,024 sequence numbers.

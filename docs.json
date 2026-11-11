@@ -1,72 +1,85 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Neutrino Documentation",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#FFC500",
+    "light": "#FFD640",
+    "dark": "#6A00FF"
   },
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://neutrino.sh"
+  },
   "navigation": {
-    "pages": [
+    "groups": [
       {
         "group": "Getting Started",
         "pages": [
           "index",
           "quickstart"
         ]
+      },
+      {
+        "group": "Protocol Architecture",
+        "pages": [
+          "protocol/nwp-v2-wire",
+          "protocol/crypto-model",
+          "protocol/flow-control"
+        ]
+      },
+      {
+        "group": "Guides & Workflows",
+        "pages": [
+          "guide/file-beam",
+          "guide/swarm-sync",
+          "guide/singularity-git",
+          "guide/mesh-vpn"
+        ]
+      },
+      {
+        "group": "Developer Reference",
+        "pages": [
+          "api-reference/cli",
+          "api-reference/json-rpc"
+        ]
+      },
+      {
+        "group": "Infrastructure",
+        "pages": [
+          "self-hosting/coordinator",
+          "self-hosting/relay"
+        ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/NeutrinoEncryption/neutrino",
+          "icon": "github"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:support@mintlify.com"
+        "label": "GitHub",
+        "href": "https://github.com/NeutrinoEncryption/neutrino"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Download CLI",
+      "href": "https://github.com/NeutrinoEncryption/neutrino/releases"
     }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/NeutrinoEncryption/neutrino"
     }
   }
 }

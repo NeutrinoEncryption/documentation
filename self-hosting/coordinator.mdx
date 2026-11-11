@@ -1,0 +1,92 @@
+---
+title: "Coordinator Server"
+description: "Deploy and manage an oblivious rendezvous signaling coordinator for blind peer discovery."
+---
+
+## Architecture & Oblivious Pairing
+
+The Neutrino Rendezvous Coordinator acts as an ephemeral signaling switchboard allowing two nodes behind firewalls to exchange their public IP:Port candidates and STUN reflexive mappings.
+
+```mermaid
+graph TD
+    Sender["Sender (Alice)"]
+    Receiver["Receiver (Bob)"]
+    Coord["Oblivious Coordinator"]
+
+    Sender -->|Keyed Hash: Room ID 9a2f...| Coord
+    Receiver -->|Keyed Hash: Room ID 9a2f...| Coord
+    Coord -->|Swap Blind Wire Encrypted Candidates| Sender
+    Coord -->|Swap Blind Wire Encrypted Candidates| Receiver
+    Note over Coord: Memory cleared immediately after pairing. Zero logging.
+```
+
+### Zero-Knowledge Invariants
+
+1. **No Session Codes**: The coordinator never receives the raw human-readable session code. The client computes:
+   $$\text{Room ID} = \text{BLAKE3\_Keyed}(\text{Session Code}, \text{"nwp2-blind-rendezvous-v1"})$$
+2. **Ephemeral Memory Only**: Pairing records exist exclusively in memory until two peers match, or expire after 5 minutes.
+3. **No Key Storage**: Ephemeral public keys exchanged across the signaling channel are sealed with the room secret; the coordinator cannot inspect identity keys or metadata.
+
+---
+
+## Deployment
+
+### Docker Deployment
+
+Run the coordinator container:
+
+```bash
+docker run -d \
+  --name neutrino-coordinator \
+  --restart unless-stopped \
+  -p 443:8443 \
+  -e PORT=8443 \
+  ghcr.io/smellyslab/neutrino-coordinator:latest
+```
+
+### Systemd Service
+
+For native Linux server installations:
+
+```ini
+# /etc/systemd/system/neutrino-coordinator.service
+[Unit]
+Description=Neutrino Oblivious Rendezvous Coordinator
+After=network.target
+
+[Service]
+Type=simple
+User=neutrino
+ExecStart=/usr/local/bin/neutrino-coordinator --port 8443
+Restart=always
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now neutrino-coordinator
+```
+
+---
+
+## Configuring the Client
+
+To configure your local `neutrino` clients to use your self-hosted coordinator:
+
+In `~/.neutrino/config.toml`:
+
+```toml
+[network]
+coordinator_url = "wss://coordinator.yourdomain.com"
+```
+
+Or set the environment variable:
+
+```bash
+export NEUTRINO_COORDINATOR_URL="wss://coordinator.yourdomain.com"
+```

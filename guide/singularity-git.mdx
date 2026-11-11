@@ -1,0 +1,91 @@
+---
+title: "Singularity P2P Git"
+description: "Serverless peer-to-peer Git hosting and collaboration using git-remote-neutrino and cryptographic push ACLs."
+---
+
+## Overview
+
+**Singularity Git** enables developers to host, clone, fetch, and push Git repositories directly between workstations without GitHub, GitLab, or any central repository server.
+
+Replication is achieved using `git-remote-neutrino`, a standalone Git remote helper binary that intercepts Git network commands and bridges them over authenticated QUIC virtual streams into the local `neutrinod` daemon.
+
+```mermaid
+graph LR
+    Dev["Developer (git clone / push)"]
+    Helper["git-remote-neutrino"]
+    LocalDaemon["Local neutrinod"]
+    PeerDaemon["Remote Host neutrinod"]
+    Repo["Git Repository (.git)"]
+
+    Dev <-->|Git Remote Helper Protocol| Helper
+    Helper <-->|Local IPC (JSON-RPC 2.0)| LocalDaemon
+    LocalDaemon <-->|NWP v2 Frames 0x40/0x41| PeerDaemon
+    PeerDaemon <-->|stateless-rpc pipe| Repo
+```
+
+---
+
+## Hosting a Repository
+
+To host a local Git repository on your machine:
+
+```bash
+cd ~/Projects/my-app
+neutrino git host .
+```
+
+The daemon prints a peer URI or ephemeral session code:
+
+```text
+  Singularity Git Host Active
+  Repository: ~/Projects/my-app
+  Remote URI: neutrino::topaz-panther-5821
+```
+
+### Enforcing Cryptographic Push ACLs
+
+By default, hosted repositories are read-only to peers. To grant specific peers permission to push commits, specify their Ed25519 identity public keys with `--allow`:
+
+```bash
+neutrino git host . --allow 7b3a9c48f210d...4a1e --allow 91f28b0c...61a2
+```
+
+During the QUIC handshake of a `git push`, the host verifies the client's Ed25519 cryptographic signature against the ACL. Unauthorized push attempts emit `ProtocolError::UnauthorizedPush` and terminate immediately without spawning `git receive-pack`.
+
+---
+
+## Cloning & Fetching
+
+### Using the Neutrino CLI
+
+```bash
+neutrino git clone neutrino::topaz-panther-5821 ./my-app
+```
+
+### Using Standard Git Directly
+
+Because `git-remote-neutrino` conforms to Git's official remote helper specification, you can use vanilla `git`:
+
+```bash
+# Clone directly using Git
+git clone neutrino::topaz-panther-5821 ./my-app
+
+# Add a peer as a remote in an existing repository
+git remote add peer-alice neutrino::topaz-panther-5821
+
+# Fetch and pull commits
+git fetch peer-alice
+git pull peer-alice main
+
+# Push authorized commits
+git push peer-alice main
+```
+
+---
+
+## How it Works Under the Hood
+
+1. Git invokes `git-remote-neutrino` with subcommands: `capabilities`, `list`, `fetch`, or `push`.
+2. The helper forwards requests across the local IPC socket to `neutrinod`.
+3. The daemon establishes a secure QUIC connection with the hosting peer and requests the repository stream.
+4. On the host, `neutrinod` spawns `git upload-pack --stateless-rpc .` (for fetches) or `git receive-pack --stateless-rpc .` (for pushes), streaming stdout and stdin directly across NWP v2 frames `0x40` (`GIT_UPLOAD_PACK`) and `0x41` (`GIT_RECEIVE_PACK`).

@@ -1,47 +1,99 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "Get started with the Neutrino CLI and daemon in under two minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+## 1. Installation
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+Neutrino is distributed as standalone Rust binaries:
+* `neutrinod`: The background supervisor daemon.
+* `neutrino`: The headless command-line interface.
+* `git-remote-neutrino`: The Git remote helper for serverless repositories.
 
-## Prerequisites
+### Build from Source
 
-Before you begin, you must have:
+Ensure you have Rust 1.75+ installed:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+```bash
+git clone https://github.com/NeutrinoEncryption/neutrino.git
+cd neutrino
+cargo build --release
+```
 
-## Get started
+The resulting binaries will be available in `target/release/`. Copy or symlink them to your system path:
 
-<Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+```bash
+# Linux / macOS
+cp target/release/neutrino target/release/neutrinod /usr/local/bin/
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+# Windows (PowerShell)
+Copy-Item target\release\neutrino.exe, target\release\neutrinod.exe C:\Windows\System32\
+```
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+---
 
-    ```bash
-    your-cli start
-    ```
-  </Step>
-</Steps>
+## 2. Managing the Daemon
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+The `neutrino` CLI automatically launches `neutrinod` in the background if it is not already running. However, you can manage the daemon lifecycle directly:
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+```bash
+# Start daemon as background service
+neutrino daemon start
+
+# Verify connection and daemon status
+neutrino daemon status
+
+# Stop the daemon
+neutrino daemon stop
+```
+
+When running in the foreground (e.g., for containerized environments or debugging):
+
+```bash
+neutrinod
+# or
+neutrino daemon start --foreground
+```
+
+---
+
+## 3. Streaming Your First File (Ephemeral Beam)
+
+### On the Sender Machine (Alice)
+
+To stream a file or archive directly to a peer:
+
+```bash
+neutrino send ./debian-12.iso
+```
+
+The CLI initializes a session with the blind rendezvous coordinator and outputs a unique, ephemeral session code:
+
+```text
+  NEUTRINO v2 Beam Sender
+  File:        debian-12.iso (3.78 GB)
+  Root BLAKE3: a4b1c2d3e4f5...
+  Session:     coral-falcon-9182
+
+  Awaiting peer connection...
+```
+
+### On the Receiver Machine (Bob)
+
+On the destination workstation, run `receive` providing the session code:
+
+```bash
+neutrino receive coral-falcon-9182 ./downloads/
+```
+
+1. **Blind Signaling**: Alice and Bob discover each other via the blind rendezvous coordinator without exposing metadata.
+2. **Direct UDP Hole Punching**: The endpoints exchange reflexive IP:port candidates discovered via RFC 5389 STUN and punch through NAT.
+3. **Hybrid Post-Quantum Handshake**: The peers negotiate session keys using X25519 + ML-KEM-768.
+4. **Wire-Rate Stream**: Data streams directly disk-to-disk across QUIC using 1 MB FastCDC chunks bounded by a 16 MB sliding window.
+5. **Bit-Perfect Verification**: The receiver checks the BLAKE3 tree-hash against the sender's manifest before committing the file atomically from `.debian-12.iso.<session>.nwp.part` to `debian-12.iso`.
+
+```text
+  [████████████████████████████████████████] 100% | 842.1 MB/s | ETA: 0s
+  BLAKE3 Tree-Hash Verified: Match.
+  Committed: ./downloads/debian-12.iso
+```
