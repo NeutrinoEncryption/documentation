@@ -1,13 +1,13 @@
 # Neutrino v2 Beta Interface Contract
 
-Status: frozen for the Phase 6-8 beta implementation. All agents must implement to this
+Status: historical LAN-oriented beta implementation contract. It does not define internet or production readiness; the product roadmap supersedes its release scope. All agents must implement to this
 contract. If an implementation cannot meet a clause, stop and report the deviation rather
 than inventing a second wire format.
 
 Scope: root `AGENTS.md` Phase 6 (daemon engine), Phase 7 (headless CLI), Phase 8
 (verification and hardening). The detailed `AGENTS/TASKLIST.md` extras (native Git
-transport, Wintun mesh, public rendezvous infrastructure) are post-beta and must not be
-faked to claim completion.
+transport, Wintun mesh, public rendezvous infrastructure) were outside this beta scope and must not be
+faked to claim completion. Default public rendezvous and relay infrastructure are now required for the first product release; see the product roadmap.
 
 ## 1. Beta Definition of Done
 
@@ -80,8 +80,8 @@ frames with `stream_id = 1`.
 
    *Security & Forward Secrecy Invariants*:
    - **Zero-Knowledge**: The token and derived session prefix are known strictly to the two authorized
-     endpoints and are never transmitted over the wire or to rendezvous coordinators (coordinators
-     see only blind keyed hashes). The 64-bit prefix is used internally as bytes `[0..8]` of the
+     endpoints and are never transmitted over the wire or to rendezvous coordinators (a future coordinator is intended to
+     see only blind keyed hashes; this property remains to be designed and verified). The 64-bit prefix is used internally as bytes `[0..8]` of the
      192-bit XChaCha20 nonce (`Nonce192`) and is never placed on the wire header.
    - **Forward Secrecy**: Payload confidentiality is guaranteed by the post-quantum hybrid ephemeral
      key exchange (X25519 + ML-KEM-768 with `ZeroizeOnDrop`), not by the nonce prefix. A fresh 128-bit

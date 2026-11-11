@@ -5,7 +5,7 @@ description: "Byte-level specification of the 24-byte binary frame header, frame
 
 ## Wire Format Overview
 
-All binary communications across direct QUIC streams, oblivious fallback relays, and local IPC boundaries adhere to the fixed 24-byte **NWP v2** header format.
+The NWP v2 framing described here is used for transfer frames. Local IPC uses JSON-RPC; relay integration remains planned.
 
 ```text
  0                   1                   2                   3

@@ -1,99 +1,34 @@
 ---
 title: "Quickstart"
-description: "Get started with the Neutrino CLI and daemon in under two minutes."
+description: "Try the current local-network transfer beta."
 ---
 
-## 1. Installation
+## Current limitation
 
-Neutrino is distributed as standalone Rust binaries:
-* `neutrinod`: The background supervisor daemon.
-* `neutrino`: The headless command-line interface.
-* `git-remote-neutrino`: The Git remote helper for serverless repositories.
+Transfers currently connect directly to the sender's locally selected address. Use loopback or a reachable LAN. Automatic internet discovery, NAT traversal and relay fallback are not integrated; peers on separate home networks will typically be unable to connect.
 
-### Build from Source
+## Build
 
-Ensure you have Rust 1.75+ installed:
+Build the workspace with a supported Rust toolchain:
 
 ```bash
-git clone https://github.com/NeutrinoEncryption/neutrino.git
-cd neutrino
 cargo build --release
 ```
 
-The resulting binaries will be available in `target/release/`. Copy or symlink them to your system path:
+Make `neutrino` and `neutrinod` from `target/release` available on both machines. The CLI can start the local daemon automatically.
+
+## Send and receive
+
+On the sender:
 
 ```bash
-# Linux / macOS
-cp target/release/neutrino target/release/neutrinod /usr/local/bin/
-
-# Windows (PowerShell)
-Copy-Item target\release\neutrino.exe, target\release\neutrinod.exe C:\Windows\System32\
+neutrino send ./file.txt
 ```
 
----
-
-## 2. Managing the Daemon
-
-The `neutrino` CLI automatically launches `neutrinod` in the background if it is not already running. However, you can manage the daemon lifecycle directly:
+On the receiver, use the actual `neu1_` session code printed by the sender:
 
 ```bash
-# Start daemon as background service
-neutrino daemon start
-
-# Verify connection and daemon status
-neutrino daemon status
-
-# Stop the daemon
-neutrino daemon stop
+neutrino receive <SESSION_CODE> ./downloads/
 ```
 
-When running in the foreground (e.g., for containerized environments or debugging):
-
-```bash
-neutrinod
-# or
-neutrino daemon start --foreground
-```
-
----
-
-## 3. Streaming Your First File (Ephemeral Beam)
-
-### On the Sender Machine (Alice)
-
-To stream a file or archive directly to a peer:
-
-```bash
-neutrino send ./debian-12.iso
-```
-
-The CLI initializes a session with the blind rendezvous coordinator and outputs a unique, ephemeral session code:
-
-```text
-  NEUTRINO v2 Beam Sender
-  File:        debian-12.iso (3.78 GB)
-  Root BLAKE3: a4b1c2d3e4f5...
-  Session:     coral-falcon-9182
-
-  Awaiting peer connection...
-```
-
-### On the Receiver Machine (Bob)
-
-On the destination workstation, run `receive` providing the session code:
-
-```bash
-neutrino receive coral-falcon-9182 ./downloads/
-```
-
-1. **Blind Signaling**: Alice and Bob discover each other via the blind rendezvous coordinator without exposing metadata.
-2. **Direct UDP Hole Punching**: The endpoints exchange reflexive IP:port candidates discovered via RFC 5389 STUN and punch through NAT.
-3. **Hybrid Post-Quantum Handshake**: The peers negotiate session keys using X25519 + ML-KEM-768.
-4. **Wire-Rate Stream**: Data streams directly disk-to-disk across QUIC using 1 MB FastCDC chunks bounded by a 16 MB sliding window.
-5. **Bit-Perfect Verification**: The receiver checks the BLAKE3 tree-hash against the sender's manifest before committing the file atomically from `.debian-12.iso.<session>.nwp.part` to `debian-12.iso`.
-
-```text
-  [████████████████████████████████████████] 100% | 842.1 MB/s | ETA: 0s
-  BLAKE3 Tree-Hash Verified: Match.
-  Committed: ./downloads/debian-12.iso
-```
+The code includes an authentication secret and an address. Share it only with the intended recipient and do not post it or include it in logs. The sender must stay running and its advertised UDP address must be reachable. Use `neutrino --help` for current options.

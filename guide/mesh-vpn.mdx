@@ -1,77 +1,10 @@
 ---
-title: "Virtual Mesh Tunnel"
-description: "Ad-hoc, encrypted point-to-point virtual network interfaces (TUN/Wintun) multiplexed over QUIC datagrams."
+title: "Virtual mesh tunnel"
+description: "Encrypted peer-to-peer networking is planned."
 ---
 
-## Overview
+## Status
 
-The **Virtual Mesh Tunnel** creates an encrypted layer-3 point-to-point intranet connecting two machines across arbitrary NAT barriers.
+Virtual adapter components exist, but live peer traffic and tunnel integration are not verified as a complete product. A reported interface alone does not establish an active tunnel.
 
-Traffic directed into the virtual adapter interface is encapsulated directly into NWP v2 frames (`FrameType: 0x30 TUNNEL_DATAGRAM`), sealed with XChaCha20-Poly1305, and beamed across QUIC unreliable datagram streams (RFC 9221) for zero head-of-line blocking.
-
-```mermaid
-graph LR
-    App["Local Application (SSH / HTTP / Database)"]
-    TUN["Virtual Adapter (TUN / Wintun) [10.42.0.2]"]
-    Daemon["neutrinod Encap & AEAD"]
-    RemoteDaemon["Remote neutrinod Decap"]
-    RemoteTUN["Remote Virtual Adapter [10.42.0.3]"]
-    Server["Remote Target Service"]
-
-    App -->|10.42.0.3:22| TUN
-    TUN --> Daemon
-    Daemon -->|NWP v2 0x30 TUNNEL_DATAGRAM (QUIC RFC 9221)| RemoteDaemon
-    RemoteDaemon --> RemoteTUN
-    RemoteTUN --> Server
-```
-
----
-
-## Establishing a Tunnel
-
-To bring up a tunnel to a target peer, pass the peer's public identity key or active session identifier:
-
-```bash
-neutrino tunnel up <PEER_PUBKEY_HEX> --virtual-ip 10.42.0.2
-```
-
-The daemon performs the following automated steps:
-1. Allocates a platform virtual adapter (`tun` on Linux/macOS, `wintun.dll` on Windows).
-2. Sets the virtual interface MTU strictly to **1,420 bytes** to accommodate QUIC datagram framing and 24-byte NWP v2 headers without triggering IP packet fragmentation.
-3. Assigns the specified virtual IP address within the default `10.42.0.0/24` subnet.
-4. Injects routing table entries routing target peer virtual IPs into the virtual adapter.
-
----
-
-## Checking Tunnel Status
-
-```bash
-neutrino tunnel status
-```
-
-Output:
-
-```text
-  INTERFACE   PEER PUBKEY               VIRTUAL IP   TX BYTES   RX BYTES   LATENCY
-  neutrino0   7b3a9c...4a1e             10.42.0.2    14.2 MB    82.9 MB    18ms
-```
-
-You can now communicate directly with services bound to the remote peer's virtual IP:
-
-```bash
-# SSH directly across the encrypted mesh tunnel
-ssh user@10.42.0.3
-
-# Access an internal HTTP development server
-curl http://10.42.0.3:8080/
-```
-
----
-
-## Tearing Down a Tunnel
-
-To tear down an active tunnel and remove the virtual network interface and injected OS routes:
-
-```bash
-neutrino tunnel down neutrino0
-```
+This milestone follows secure, setup-free internet file transfer. It requires integrated daemon-to-daemon operation, a threat model and real end-to-end tests before it is described as ready.

@@ -36,7 +36,7 @@ sequenceDiagram
 
 * **Window Cap**: Unacknowledged in-flight payload $\le 16\text{ MB}$ (16 chunks @ 1 MB target).
 * **Receiver Cadence**: Receiver emits `CHUNK_ACK` every 4 received chunks or every 4 MB drained to disk.
-* **Bounded RSS**: Memory consumption on both sender and receiver stays bounded under 128 MB RSS regardless of file size (tested up to 100 GB+).
+* **Bounded RSS**: Bounded memory is a design goal. Large-file and sustained memory limits require reproducible end-to-end verification; existing beta measurements do not prove a universal 128 MB ceiling.
 
 ---
 
