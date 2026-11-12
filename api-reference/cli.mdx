@@ -69,6 +69,6 @@ Set variables in the daemon environment before startup. Stop an already running 
 | `NEUTRINO_BIND_ADDR` | UDP bind address; default `0.0.0.0:0` |
 | `NEUTRINO_MAX_MBPS` | Default outbound rate limit in megabits per second |
 | `NEUTRINO_LOG_LEVEL` | Default `info`; `trace`, `debug`, `info`, `warn`, `error` |
-| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.2.0`; not a runtime protocol setting |
+| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.2.2`; not a runtime protocol setting |
 
 Daemon data defaults to `%LOCALAPPDATA%/neutrino` on Windows; on Unix, `$XDG_DATA_HOME/neutrino` or `~/.local/share/neutrino`. Configuration loads from `config.toml` in the selected data directory, falling back to `~/.neutrino/config.toml`; environment overrides apply afterward. Protect cookies and key material.
