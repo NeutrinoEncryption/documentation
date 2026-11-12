@@ -29,7 +29,7 @@ Counters must not repeat under the same key; exhaustion is an error. These imple
 Clients derive a ticket locally:
 
 ```rust
-let derived = blake3::derive_key("neutrino v2 relay ticket v1", &token);
+let derived = blake3::derive_key("neutrino v2 relay ticket v2", &token);
 let ticket = &derived[..16];
 ```
 

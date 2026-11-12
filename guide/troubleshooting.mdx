@@ -9,7 +9,7 @@ Run `neutrino daemon status`. Keep both binaries from the same release together,
 
 ## Transfer cannot connect
 
-Keep the sender running and copy its full current `neu1_...` invitation. Allow four seconds for direct attempts before relay fallback. Check outbound HTTPS/WebSocket access and ensure `NEUTRINO_RELAY_URL` is not `off`.
+Keep the sender running and copy its full current `neu1_...` invitation. Allow up to about seven seconds for direct and hole-punch attempts before the relay takes over. Both sides must run v0.3.0 or newer. Check outbound HTTPS/WebSocket access and ensure `NEUTRINO_RELAY_URL` is not `off`.
 
 To test relay-only receive, stop the receiver daemon, set `NEUTRINO_DIRECT=off`, and retry. Disabling both relay and direct connectivity leaves no usable path. See [environment settings](/api-reference/cli).
 

@@ -17,7 +17,15 @@ Run receive on the recipient machine using the real code. A folder uses the same
 The sender binds UDP and queries STUN on that socket, trying `neutrinoapi.peretas.live:3478` first. Its invitation encodes address candidates plus a random 16-byte authentication token.
 </Step>
 <Step title="Try direct QUIC">
-The receiver races QUIC connections to all invitation candidates for four seconds. STUN discovers an address; router and firewall behavior still determine direct reachability.
+Connections are established in three stages. The CLI prints which path was used (`Path: direct`, `direct (hole-punched)` or `relay`).
+
+<Steps>
+  <Step title="Direct">The receiver races QUIC to every candidate in the invitation (the sender's STUN-discovered public address and LAN addresses) for two seconds. This succeeds on the same network or when the sender is publicly reachable.</Step>
+  <Step title="Coordinated hole punching">Otherwise both peers meet on the blind relay. The receiver sends its own STUN and LAN candidates over that channel, then both sides fire QUIC handshakes at each other for up to five seconds, which opens a path through most home and office NATs.</Step>
+  <Step title="Relay">If punching fails (for example a symmetric NAT or a strict firewall), the already-paired relay carries the end-to-end encrypted stream.</Step>
+</Steps>
+
+Peers on v0.3.0 and later use a new relay ticket, so both sides need v0.3.0 or newer.
 </Step>
 <Step title="Use relay fallback">
 If direct connection fails, peers pair at `wss://neutrinoapi.peretas.live/v1/relay` using a ticket derived locally from the token. The relay does not receive the token. The same authenticated handshake and encrypted transfer run over the relay path.
