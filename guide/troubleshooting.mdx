@@ -1,0 +1,26 @@
+---
+title: "Troubleshooting"
+description: "Diagnose startup, connectivity, interruptions, and verification failures."
+---
+
+## Daemon startup fails
+
+Run `neutrino daemon status`. Keep both binaries from the same release together, or use `--daemon-bin BIN`. Ensure the client and daemon share data-directory and IPC settings. Reinstall both binaries if versions differ.
+
+## Transfer cannot connect
+
+Keep the sender running and copy its full current `neu1_...` invitation. Allow four seconds for direct attempts before relay fallback. Check outbound HTTPS/WebSocket access and ensure `NEUTRINO_RELAY_URL` is not `off`.
+
+To test relay-only receive, stop the receiver daemon, set `NEUTRINO_DIRECT=off`, and retry. Disabling both relay and direct connectivity leaves no usable path. See [environment settings](/api-reference/cli).
+
+## Interrupted transfer
+
+Preserve `.nwp.part` and `.nwp.state` files and retry with unchanged source contents and the same destination. See [resume](/guide/file-beam). Do not rename a partial file to its final name: it has not passed whole-file verification.
+
+## Verification or commit fails
+
+Check destination permissions and free space. Keep the source unchanged during transfer. A failed root check or filesystem commit means failure; wait for verified completion before using the result.
+
+## Collect diagnostics
+
+Finish other transfers, stop the daemon, and set `NEUTRINO_LOG_LEVEL=debug` before starting it again. Environment changes do not reconfigure an existing daemon. Record versions, platform, error text, and whether direct or relay was used. Redact invitation codes, cookies, filenames, and local paths from shared logs and receipts.

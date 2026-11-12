@@ -4,14 +4,14 @@
   "name": "Neutrino Documentation",
   "colors": {
     "primary": "#FFC500",
-    "light": "#FFD640",
+    "light": "#FFC500",
     "dark": "#6A00FF"
   },
   "favicon": "/favicon.svg",
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://neutrino.sh"
+    "href": "/"
   },
   "navigation": {
     "groups": [
@@ -19,7 +19,8 @@
         "group": "Getting Started",
         "pages": [
           "index",
-          "quickstart"
+          "quickstart",
+          "installation"
         ]
       },
       {
@@ -34,6 +35,7 @@
         "group": "Guides & Workflows",
         "pages": [
           "guide/file-beam",
+          "guide/troubleshooting",
           "guide/swarm-sync",
           "guide/singularity-git",
           "guide/mesh-vpn"
@@ -50,7 +52,14 @@
         "group": "Infrastructure",
         "pages": [
           "self-hosting/coordinator",
-          "self-hosting/relay"
+          "self-hosting/relay",
+          "releasing"
+        ]
+      },
+      {
+        "group": "Implementation reference",
+        "pages": [
+          "spec/beta-interface"
         ]
       }
     ],
@@ -74,12 +83,31 @@
     "primary": {
       "type": "button",
       "label": "Download CLI",
-      "href": "https://github.com/NeutrinoEncryption/neutrino/releases"
+      "href": "https://neutrinoapi.peretas.live/dl/latest/"
     }
   },
   "footer": {
     "socials": {
       "github": "https://github.com/NeutrinoEncryption/neutrino"
     }
-  }
+  },
+  "background": {
+    "color": {
+      "dark": "#0C0C0C",
+      "light": "#FFFFFF"
+    }
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "redirects": [
+    {
+      "source": "/introduction",
+      "destination": "/index"
+    },
+    {
+      "source": "/spec/BETA_INTERFACE",
+      "destination": "/spec/beta-interface"
+    }
+  ]
 }

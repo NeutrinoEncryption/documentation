@@ -1,109 +1,49 @@
 ---
-title: "Cryptographic Architecture"
-description: "Hybrid post-quantum key exchange, BLAKE3 HKDF expansion, and 192-bit extended nonce schedule."
+title: "Crypto and privacy model"
+description: "Invitation authentication, hybrid keys, encrypted frames, and relay visibility."
 ---
 
-## Cryptographic Guarantees
+## Invitation authentication
 
-Neutrino v2 employs a hybrid post-quantum cryptographic pipeline designed to withstand both classical cryptanalysis and future quantum adversaries equipped with Shor's algorithm.
+A `neu1_...` invitation encodes address candidates and a random 16-byte token. It is encoded, not encrypted. Anyone holding it can read those addresses and has the transfer authentication secret. Share it privately.
 
-```mermaid
-graph TD
-    subgraph Handshake ["Hybrid Ephemeral Key Exchange"]
-        ECDH["X25519 Classical Shared Secret (32B)"]
-        MLKEM["ML-KEM-768 Post-Quantum Shared Secret (32B)"]
-        Combined["Hybrid Combiner (64B)"]
-        ECDH --> Combined
-        MLKEM --> Combined
-    end
+The receiver initiates a hybrid X25519 + ML-KEM-768 exchange. Keyed BLAKE3 tags derived from the token authenticate the initiator material and responder transcript. This transfer authenticates possession of the invitation; it is not an independently verified human identity or an Ed25519 identity-signature exchange.
 
-    subgraph KDF ["BLAKE3 Key Schedule Expansion"]
-        MasterSecret["Master Secret = BLAKE3_Keyed(Combined, 'nwp2-hybrid-kdf')"]
-        Combined --> MasterSecret
-        TX["tx_key (32B)"]
-        RX["rx_key (32B)"]
-        HDR["header_key (32B)"]
-        MasterSecret -->|Derive 'nwp2-tx-aead'| TX
-        MasterSecret -->|Derive 'nwp2-rx-aead'| RX
-        MasterSecret -->|Derive 'nwp2-hdr-mac'| HDR
-    end
+## Payload encryption
 
-    subgraph AEAD ["Streaming AEAD Cipher"]
-        Nonce["192-Bit Monotonic Extended Nonce"]
-        Cipher["XChaCha20-Poly1305"]
-        TX --> Cipher
-        Nonce --> Cipher
-    end
-```
+Hybrid shared secrets feed domain-separated key derivation. Directional session keys protect frames with XChaCha20-Poly1305 before transmission. Ephemeral key structures use `ZeroizeOnDrop` to clear secrets on drop.
 
----
+The 192-bit nonce layout in `neutrino-crypto` is:
 
-## 1. Long-Term Identity & Mutual Authentication
+| Bytes | Field |
+| --- | --- |
+| 0–7 | 64-bit session prefix |
+| 8–9 | 16-bit stream ID |
+| 10–17 | 64-bit monotonic sequence |
+| 18–23 | 48-bit block counter |
 
-Every Neutrino node maintains an **Ed25519** identity keypair:
-* **Storage**: Encrypted PKCS#8 PEM on disk at `~/.neutrino/identity.key`, locked with an Argon2id key derived from a local passphrase.
-* **Handshake Authentication**: During `HANDSHAKE_INIT` and `HANDSHAKE_RESP`, endpoints exchange signed nonces. This guarantees peer identity and prevents Machine-in-the-Middle (MITM) attacks while keeping network packets oblivious to observers.
+Counters must not repeat under the same key; exhaustion is an error. These implementation details do not constitute an independent security audit or protection against compromised endpoints.
 
----
+## Relay ticket and metadata
 
-## 2. Hybrid Post-Quantum Key Exchange
-
-Neutrino avoids relying solely on post-quantum or classical algorithms by combining both:
-
-1. **Classical ECDH**: Ephemeral **X25519** key exchange (Curve25519).
-2. **Post-Quantum KEM**: NIST-standardized **ML-KEM-768** (FIPS 203 / Kyber).
-
-The two resulting 32-byte shared secrets are concatenated into a 64-byte intermediate entropy pool:
-
-$$\text{Intermediate} = \text{Secret}_{\text{X25519}} \parallel \text{Secret}_{\text{ML-KEM-768}}$$
-
-Even in the hypothetical event that ML-KEM-768 is compromised, security defaults back to classical X25519. Conversely, if quantum computers break discrete logarithms, ML-KEM-768 maintains complete secrecy.
-
----
-
-## 3. BLAKE3 HKDF Key Expansion
-
-The 64-byte hybrid intermediate is expanded using domain-separated BLAKE3 key derivation:
+Clients derive a ticket locally:
 
 ```rust
-// Master Secret Derivation
-let master_secret = blake3::keyed_hash(
-    b"nwp2-hybrid-kdf-master-secret-v1",
-    &intermediate_pool,
-);
-
-// Domain-Separated Directional Keys
-let tx_key     = blake3::derive_key("nwp2-tx-aead-v1", master_secret.as_bytes());
-let rx_key     = blake3::derive_key("nwp2-rx-aead-v1", master_secret.as_bytes());
-let header_key = blake3::derive_key("nwp2-hdr-mac-v1", master_secret.as_bytes());
+let derived = blake3::derive_key("neutrino v2 relay ticket v1", &token);
+let ticket = &derived[..16];
 ```
 
----
+| Observer | Visible information |
+| --- | --- |
+| Relay operator | Client IPs, timing, traffic volume, and the derived ticket |
+| STUN operator | Public source IP/port and request timing |
+| Invitation recipient | Encoded candidate addresses and token |
+| Receiver endpoint | Decrypted metadata and contents |
 
-## 4. 192-Bit Extended Nonce Schedule
+The relay receives neither the raw invitation token nor plaintext filenames or contents. Transfer metadata travels inside protected transfer frames.
 
-To guarantee that a nonce is never repeated under the same key across millions of chunks, Neutrino uses **XChaCha20-Poly1305** with a deterministic 192-bit (24-byte) nonce:
+<Warning>Encryption does not hide timing or volume. A leaked invitation compromises possession-based authentication. Protect endpoints and redact codes from logs and receipts.</Warning>
 
-```text
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                 Session Prefix (64 bits)                      |
-|                                                               |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Stream ID (16 bits)  |  Block Counter (Upper 16 bits)|
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                 Sequence Counter (64 bits)                    |
-|                                                               |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                 Block Counter (Lower 32 bits)                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
+## Verified completion
 
-An internal atomic counter strictly prevents counter rollover ($> 2^{64}-1$), triggering an immediate graceful re-key or session teardown.
-
----
-
-## 5. Memory Zeroization
-
-All private key material, ephemeral private scalars, KEM decapsulation keys, and intermediate derivation secrets are wrapped in `zeroize::ZeroizeOnDrop`. When any cryptographic structure goes out of scope, the memory buffers are securely scrubbed with zeroes before deallocation.
+Each FastCDC chunk is BLAKE3-verified. The whole-file BLAKE3 root must match before atomic rename from hidden `.nwp.part` staging. Folders additionally use staged extraction. The receiver sends a commit ACK; only then does the sender report success.

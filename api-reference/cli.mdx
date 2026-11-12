@@ -1,107 +1,74 @@
 ---
-title: "CLI Reference"
-description: "Comprehensive command-line syntax and option reference for the neutrino utility."
+title: "CLI reference"
+description: "Transfer commands, receipts, daemon lifecycle, and environment configuration."
 ---
 
-## Global Options
-
-The `neutrino` CLI accepts several global flags applicable to all subcommands:
+## Transfer
 
 ```bash
-neutrino [OPTIONS] <COMMAND>
+neutrino send <file-or-folder> [--max-mbps N] [--json]
+neutrino receive <code> [dir] [-y] [--json]
 ```
 
-| Flag | Argument | Description |
-| :--- | :--- | :--- |
-| `--data-dir` | `<DIR>` | Override the default data directory (default: `~/.neutrino`). |
-| `--daemon-bin` | `<BIN>` | Path to explicit `neutrinod` executable used when auto-spawning. |
-| `-h`, `--help` | | Print help documentation. |
-| `-V`, `--version` | | Print version information. |
+| Option | Meaning |
+| --- | --- |
+| `send --max-mbps N` | Outbound limit in megabits per second |
+| `send --max-speed N` | Alternate rate-limit option, also megabits per second |
+| `--json` | Completion receipt on stdout; invitation/progress go to stderr |
+| `receive [dir]` | Destination directory; defaults to `.` |
+| `receive --out DIR` | Output directory override |
+| `receive -y`, `--yes` | Accept without interactive confirmation |
 
----
+`recv` and `recieve` are aliases for `receive`. Folders arrive as `dir/<name>`. The parser also accepts `send --chunk-size`, but the current send RPC does not forward that option; use default FastCDC chunking.
 
-## Subcommands
-
-### `daemon`
-Manage the background `neutrinod` supervisor daemon.
+## Daemon
 
 ```bash
-neutrino daemon start [--foreground]
+neutrino daemon start
+neutrino daemon start --foreground
 neutrino daemon status
 neutrino daemon stop
 ```
 
----
+Transfer commands auto-start the daemon. Global `--data-dir DIR` selects the data directory; `--daemon-bin BIN` supplies an explicit daemon executable. The CLI also exposes `daemon update` and `--apply`; the documented release update path is to rerun the [installer](/installation).
 
-### `send`
-Transmit a file or directory archive over an Ephemeral File Beam transfer.
+<Warning>The `sync`, `git`, and `tunnel` groups are in development / not yet available as complete products.</Warning>
 
-```bash
-neutrino send <PATH> [OPTIONS]
-```
-
-| Option | Argument | Description |
-| :--- | :--- | :--- |
-| `<PATH>` | Required | Local path to the file to beam. |
-| `--chunk-size` | `<MB>` | Chunk boundary size in Megabytes (default: `1`). |
-| `--max-speed`, `--max-mbps` | `<MBPS>` | Rate-limit outbound bandwidth in Megabits per second. |
-| `--json` | | Output a machine-readable JSON transfer completion receipt. |
-
----
-
-### `receive`
-Receive an Ephemeral File Beam transfer using a session code.
+## JSON receipts
 
 ```bash
-neutrino receive <CODE> [DESTINATION] [OPTIONS]
+neutrino receive neu1_REPLACE_WITH_ACTUAL_CODE ./downloads -y --json
 ```
 
-| Option | Argument | Description |
-| :--- | :--- | :--- |
-| `<CODE>` | Required | Ephemeral transfer session token. |
-| `[DESTINATION]` | Optional | Destination directory (default: current working directory). |
-| `--out` | `<DIR>` | Output directory override. |
-| `-y`, `--yes` | | Automatically accept transfer prompt without interactive confirmation. |
-| `--json` | | Emit machine-readable completion receipt on stdout. |
+Completed or failed transfer outcomes produce one receipt:
 
----
+| Field | Meaning |
+| --- | --- |
+| `role` | `sender` or `receiver` |
+| `session_id` | Sender invitation or receiver daemon session ID |
+| `session_code` | Secret invitation code |
+| `state` | `completed` or `failed` |
+| `total_bytes` | Observed transferred byte count |
+| `elapsed_ms` | Monotonic elapsed milliseconds |
+| `throughput_bps` | Bits per second |
+| `chunk_count` | FastCDC chunk count |
+| `root_hash` | Whole-file BLAKE3 hex on success |
+| `verified` | Whether whole-file verification passed |
 
-### `sync`
-Multi-host folder synchronization commands.
+Exit status is `0` for success, `1` for failure, and `2` for usage errors. Cancellation or failures before a transfer outcome may produce no receipt. Check exit status plus `state` and `verified`.
 
-```bash
-neutrino sync share <PATH> <NAME>
-neutrino sync join <CODE> <DESTINATION>
-neutrino sync status
-neutrino sync list
-neutrino sync scan [SHARE_ID]
-```
+## Environment variables
 
----
+Set variables in the daemon environment before startup. Stop an already running daemon before changing them.
 
-### `git`
-Serverless Singularity Git operations.
+| Variable | Behavior |
+| --- | --- |
+| `NEUTRINO_RELAY_URL` | Default `wss://neutrinoapi.peretas.live/v1/relay`; `off` disables relay |
+| `NEUTRINO_DIRECT` | `off` forces relay-only receive |
+| `NEUTRINO_DATA_DIR` | Override daemon data directory |
+| `NEUTRINO_BIND_ADDR` | UDP bind address; default `0.0.0.0:0` |
+| `NEUTRINO_MAX_MBPS` | Default outbound rate limit in megabits per second |
+| `NEUTRINO_LOG_LEVEL` | Default `info`; `trace`, `debug`, `info`, `warn`, `error` |
+| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.2.0`; not a runtime protocol setting |
 
-```bash
-# Host a repository
-neutrino git host <PATH> [--allow <PUBKEY>...]
-
-# Clone a remote repository
-neutrino git clone <CODE> [DESTINATION]
-```
-
----
-
-### `tunnel`
-Encrypted virtual mesh VPN tunnel operations.
-
-```bash
-# Bring up a point-to-point tunnel interface
-neutrino tunnel up <TARGET_PEER> [--virtual-ip <IP>]
-
-# Teardown an active tunnel
-neutrino tunnel down <INTERFACE>
-
-# View active tunnels and real-time bandwidth metrics
-neutrino tunnel status
-```
+Daemon data defaults to `%LOCALAPPDATA%/neutrino` on Windows; on Unix, `$XDG_DATA_HOME/neutrino` or `~/.local/share/neutrino`. Configuration loads from `config.toml` in the selected data directory, falling back to `~/.neutrino/config.toml`; environment overrides apply afterward. Protect cookies and key material.

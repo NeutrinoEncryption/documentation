@@ -1,158 +1,53 @@
 ---
-title: "JSON-RPC 2.0 API"
-description: "Specification of the local IPC socket protocol and JSON-RPC methods exposed by neutrinod."
+title: "Local JSON-RPC API"
+description: "Authenticated daemon control and transfer schemas."
 ---
 
-## Transport & Security
+The CLI is a thin client of `neutrinod`. Use `neutrino-ipc` for custom clients to keep endpoint discovery, framing, authentication, and subscriptions consistent with the daemon.
 
-The `neutrinod` daemon exposes an authenticated local IPC transport:
-* **Linux & macOS**: Unix Domain Socket at `/run/user/<UID>/neutrino.sock` (fallback: `~/.neutrino/neutrino.sock`).
-* **Windows**: Named Pipe at `\\.\pipe\neutrino-ipc`.
+## Transport and authentication
 
-### Cookie Authentication Handshake
+Local IPC uses Unix domain sockets on Linux/macOS and Windows named pipes. Messages have a four-byte big-endian length prefix followed by JSON-RPC 2.0 JSON. This is a local control interface, not a public HTTP API.
 
-On startup, `neutrinod` generates a 256-bit cryptographically secure random token and writes it to `~/.neutrino/daemon.cookie` with strict `0600` permissions (readable only by the local user).
-
-Clients connecting to the socket must authenticate before issuing any command:
+Authenticate through `auth.verify` using the daemon's 256-bit cookie encoded as 64 hexadecimal characters. Never send a real cookie to a remote service or commit it.
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
   "method": "auth.verify",
-  "params": {
-    "token": "4f18a2...e901"
-  }
+  "params": { "token": "REPLACE_WITH_LOCAL_COOKIE_HEX" }
 }
 ```
 
-Response:
+The result includes `authenticated` and `version`. Endpoint and cookie selection depend on platform and overrides; use library discovery helpers instead of hard-coding paths.
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "authenticated": true
-  }
-}
-```
+## Methods
 
-Any subsequent commands sent on an unauthenticated connection trigger immediate socket closure.
+| Method | Parameters | Result fields |
+| --- | --- | --- |
+| `daemon.status` | `{}` | `version`, `uptime_seconds`, `active_transfers`, `connected_peers`, `sync_shares` |
+| `daemon.shutdown` | `{}` | `shutting_down` |
+| `transfer.send` | `path`, optional `max_mbps` | `session_code`, `total_bytes`, `chunk_count` |
+| `transfer.receive` | `session_code`, `destination` | `session_id`, `accepted` |
+| `transfer.status` | `session_id` | `session_id`, `bytes_transferred`, `total_bytes`, `speed_bps`, `progress_percent`, `state` |
+| `transfer.cancel` | `session_id` | `cancelled` |
 
----
-
-## Daemon Methods
-
-### `daemon.status`
-Returns daemon runtime telemetry, version, connected peers, and active operations.
-
-**Request:**
 ```json
 {
   "jsonrpc": "2.0",
   "id": 2,
-  "method": "daemon.status",
-  "params": {}
+  "method": "transfer.send",
+  "params": { "path": "/home/alice/report.pdf", "max_mbps": 100 }
 }
 ```
 
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "result": {
-    "version": "2.0.0",
-    "uptime_seconds": 14208,
-    "active_transfers": 1,
-    "active_sync_shares": 3,
-    "active_tunnels": 1,
-    "memory_rss_bytes": 48234496
-  }
-}
-```
+A send response provides an invitation, not completion proof. Receiver `accepted` means a task started. Wait for terminal events and verification.
 
-### `daemon.stop`
-Requests graceful shutdown of all running services and terminates the daemon.
+## Events
 
----
+Call `subscribe` with a `topics` list (for example `["transfer"]` or `["*"]`). The result includes `subscription_id` and `subscribed`. Call `unsubscribe` with that `subscription_id`; its result includes `unsubscribed`. Event methods include `transfer.progress`, `transfer.completed`, and `transfer.failed`. Events identify transfers by `session_id`; the CLI receipt is a separate schema. Authoritative typed schemas live in `crates/neutrino-ipc/src/protocol/methods.rs` and `events.rs` in the source checkout.
 
-## Transfer Methods
+<Warning>Sync, Git, and tunnel interfaces remain in development; registered method names do not promise working released workflows.</Warning>
 
-### `transfer.send`
-Initiates an Ephemeral Beam file transmission.
-
-**Parameters:**
-* `path` (String): Absolute or relative filesystem path of the source file.
-* `chunk_size` (`Option<usize>`): Custom chunk size in Megabytes.
-* `max_mbps` (`Option<u32>`): Outbound bandwidth ceiling.
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "result": {
-    "session_code": "amber-lynx-4192",
-    "file_size": 1048576000,
-    "blake3_root": "8b51d6c8b368735237b69c...7b5f"
-  }
-}
-```
-
-### `transfer.receive`
-Initiates connection to an active transfer session and streams the payload to staging.
-
-**Parameters:**
-* `session_code` (String): Ephemeral session token.
-* `destination` (`Option<String>`): Target folder path.
-* `auto_accept` (bool): Bypass interactive prompt.
-
----
-
-## Swarm Sync Methods
-
-* `sync.share`: Register a folder for swarm replication.
-  * Params: `{ "path": "/path/to/folder", "name": "Vault" }`
-* `sync.join`: Join an existing swarm space.
-  * Params: `{ "code": "swarm::...", "destination": "/path/to/local" }`
-* `sync.status`: Query status of all active sync spaces.
-* `sync.list`: List tracked spaces, sizes, and peer counts.
-* `sync.scan`: Force immediate filesystem diff scan.
-  * Params: `{ "share_id": "optional-id" }`
-
----
-
-## Git & Tunnel Methods
-
-* `git.host`: Host repository over Singularity Git.
-  * Params: `{ "path": "/path/to/repo", "push_allowed": ["<PUBKEY_HEX>"] }`
-* `git.clone`: Clone repository from a remote session code.
-  * Params: `{ "code": "neutrino::...", "destination": "/path/to/dest" }`
-* `tunnel.up`: Create a virtual network adapter and route peer traffic.
-  * Params: `{ "target_peer": "<PUBKEY_HEX>", "virtual_ip": "10.42.0.2" }`
-* `tunnel.down`: Teardown virtual interface.
-  * Params: `{ "interface": "neutrino0" }`
-* `tunnel.status`: Query active tunnel interfaces, stats, and latencies.
-
----
-
-## Pub/Sub Event Notifications
-
-Clients can listen for real-time daemon events:
-
-```json
-// Example: transfer.progress
-{
-  "jsonrpc": "2.0",
-  "method": "transfer.progress",
-  "params": {
-    "session_code": "amber-lynx-4192",
-    "bytes_transferred": 524288000,
-    "total_bytes": 1048576000,
-    "speed_mbps": 820.4,
-    "eta_seconds": 5
-  }
-}
-```
+See [CLI reference](/api-reference/cli) for user workflows.

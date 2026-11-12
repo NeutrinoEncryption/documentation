@@ -1,10 +1,10 @@
 ---
 title: "Singularity Git"
-description: "Peer-to-peer Git replication is planned."
+description: "Development status in Neutrino v0.2.0."
 ---
 
-## Status
+<Warning>In development / not yet available as a complete end-to-end product.</Warning>
 
-Remote clone, fetch and authorized push are not complete end-to-end workflows. A beta verification attempt to clone and push using the hosted URL failed. Local Git and access-control components do not establish working peer replication.
+The planned design uses `git-remote-neutrino` and multiplexed packfile streams. The helper and core code do not yet provide complete peer-to-peer Git hosting and replication. Do not rely on this subsystem for backups, repository durability, or protected connectivity.
 
-This milestone follows secure, setup-free internet file transfer. It requires integrated daemon-to-daemon operation, a threat model and real end-to-end tests before it is described as ready.
+Use the [quickstart](/quickstart) for released file and folder transfers.

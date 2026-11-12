@@ -1,34 +1,36 @@
 ---
 title: "Quickstart"
-description: "Try the current local-network transfer beta."
+description: "Install v0.2.0 and transfer a file or folder between two machines."
 ---
 
-## Current limitation
-
-Transfers currently connect directly to the sender's locally selected address. Use loopback or a reachable LAN. Automatic internet discovery, NAT traversal and relay fallback are not integrated; peers on separate home networks will typically be unable to connect.
-
-## Build
-
-Build the workspace with a supported Rust toolchain:
-
-```bash
-cargo build --release
+<Steps>
+<Step title="Install on both machines">
+<CodeGroup>
+```bash Linux / macOS
+curl -fsSL https://neutrinoapi.peretas.live/install.sh | sh
 ```
-
-Make `neutrino` and `neutrinod` from `target/release` available on both machines. The CLI can start the local daemon automatically.
-
-## Send and receive
-
+```powershell Windows
+irm https://neutrinoapi.peretas.live/install.ps1 | iex
+```
+</CodeGroup>
+Run `neutrino --version`. See [installation](/installation) for downloads and version pinning.
+</Step>
+<Step title="Send a file or folder">
 On the sender:
-
 ```bash
-neutrino send ./file.txt
+neutrino send ./my-folder
 ```
-
-On the receiver, use the actual `neu1_` session code printed by the sender:
-
+Keep it running. Share the complete `neu1_...` code privately with the recipient.
+</Step>
+<Step title="Receive and wait for verification">
+On the recipient, replace the example code with the actual invitation:
 ```bash
-neutrino receive <SESSION_CODE> ./downloads/
+neutrino receive neu1_REPLACE_WITH_ACTUAL_CODE ./downloads
 ```
+Accept the prompt. The folder arrives as `./downloads/my-folder`. Both CLIs auto-start their local daemon. The sender reports success only after the receiver confirms a verified commit.
+</Step>
+</Steps>
 
-The code includes an authentication secret and an address. Share it only with the intended recipient and do not post it or include it in logs. The sender must stay running and its advertised UDP address must be reachable. Use `neutrino --help` for current options.
+<Note>The receiver races direct QUIC candidates for four seconds before falling back to the default relay.</Note>
+
+Use `-y` to accept automatically and `--json` for a completion receipt. Receipts include the invitation; protect them as secrets. See the [CLI reference](/api-reference/cli) and [troubleshooting](/guide/troubleshooting).

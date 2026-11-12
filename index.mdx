@@ -1,16 +1,21 @@
 ---
 title: "Neutrino"
-description: "Current status and goals for peer-to-peer transfers."
+description: "Secure internet file and folder transfer with Neutrino v0.2.0."
 ---
 
-Neutrino aims to let you send a file over the internet by sharing an invitation, with secure defaults and no account, port forwarding, or server setup. The daemon handles transfer work; clients communicate with it through local IPC.
+Neutrino v0.2.0 sends files and folders between two machines by sharing a `neu1_...` invitation. With the default services, you need no account, manual port forwarding, or personal server. Install on both machines and share the sender's code privately.
 
-## Current status
+<Columns cols={2}>
+<Card title="Start a transfer" icon="bolt" href="/quickstart">Install and send your first file.</Card>
+<Card title="How it works" icon="network-wired" href="/guide/file-beam">Direct QUIC with encrypted relay fallback.</Card>
+</Columns>
 
-The current beta connects directly to a local address embedded in the invitation. It is intended for loopback or reachable LANs. Internet discovery, NAT traversal and relay fallback are not integrated into the transfer workflow. Do not expect a typical connection across separate home networks to work yet.
+## Available now
 
-Multi-host sync, peer-to-peer Git and mesh tunneling are planned; existing components do not establish that these workflows work end to end. Security and privacy claims require a documented threat model and independent review.
+File and folder transfer includes STUN-discovered address candidates, direct QUIC, relay fallback, hybrid key exchange, encrypted frames, BLAKE3 verification, staging, and resume support. The CLI auto-starts `neutrinod`. The daemon and core crates handle network, crypto, and disk operations; clients communicate through authenticated local IPC.
 
-## What comes next
+<Warning>Continuous Swarm Sync, Singularity Git (`git-remote-neutrino`), and mesh tunneling are in development / not yet available as complete end-to-end products. Component code and CLI entries do not establish a working released workflow.</Warning>
 
-The first product milestone is setup-free internet file transfer, with operated default discovery and relay services, end-to-end encryption, real-network testing and security review. Discovery and relay operators can observe network metadata such as IP addresses, timing and traffic volume; their exact exposure remains to be specified. Sync, Git and mesh follow as separate milestones.
+## Privacy boundary
+
+The relay sees client IPs, timing, traffic volume, and a derived ticket. It does not receive plaintext contents, filenames, or the invitation token. Possession of an invitation authorizes joining its transfer. See the [crypto model](/protocol/crypto-model).

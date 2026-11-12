@@ -1,8 +1,83 @@
 ---
-title: "Fallback relay"
-description: "Planned fallback for restricted networks."
+title: "Self-host the relay"
+description: "Deploy neutrino-relay behind nginx TLS and preserve its pairing protocol."
 ---
 
-An operated default relay is planned for cases where direct peer connectivity fails. Although a relay client component exists, the current transfer workflow does not automatically use it, and no supported relay deployment or configuration procedure is established here.
+## Build and install
 
-The intended design forwards end-to-end encrypted data without giving the relay the file contents or invitation secret. The relay can observe network metadata such as IP addresses, timing and traffic volume. Integration, abuse controls, operations, independent security review and real-network verification remain release tasks. Optional self-hosting is a future capability.
+From a source checkout using the workspace's Rust toolchain:
+
+```bash
+cargo build --release -p neutrino-relay
+sudo install -m755 target/release/neutrino-relay /usr/local/bin/neutrino-relay
+```
+
+The listener defaults to `127.0.0.1:8787`; `NEUTRINO_RELAY_BIND` overrides it. Keep the backend on loopback behind TLS.
+
+Create a dedicated unprivileged `neutrino-relay` user and a systemd unit at `/etc/systemd/system/neutrino-relay.service`:
+
+```ini
+[Unit]
+Description=Neutrino blind pairing relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=neutrino-relay
+ExecStart=/usr/local/bin/neutrino-relay
+Environment=NEUTRINO_RELAY_BIND=127.0.0.1:8787
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+As an administrator, run `systemctl daemon-reload` and `systemctl enable --now neutrino-relay`.
+
+## nginx TLS proxy
+
+Issue a certificate for your hostname using certbot or your TLS provider. Add this location to your HTTPS server block:
+
+```nginx
+location /v1/relay {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+}
+```
+
+Run `nginx -t` before reloading. Expose HTTPS 443, keep 8787 private, and configure per-client connection/request limits at the proxy. Monitor with `journalctl -u neutrino-relay -f`.
+
+On both clients, stop the daemon, set `NEUTRINO_RELAY_URL=wss://YOUR_HOST/v1/relay`, and restart. Set `NEUTRINO_DIRECT=off` on the receiver to test the relay path. Complete a file transfer and check verified receipts; a health endpoint alone does not test pairing or forwarding.
+
+## Pairing protocol
+
+1. Open a WebSocket connection through TLS.
+2. Send binary registration: `[16-byte ticket | u32 0]`, with the length encoded big endian (20 bytes total).
+3. The first two connections with the same ticket are paired.
+4. Both receive an empty-envelope pairing notice.
+5. Subsequent binary messages are forwarded verbatim.
+
+Clients [derive tickets locally](/protocol/crypto-model); the raw token is never registered. Preserve registration and pairing-notice compatibility when updating the server.
+
+## Current limits
+
+| Limit | Value |
+| --- | --- |
+| WebSocket message | 4 MiB |
+| Pair wait | 1 hour |
+| Idle timeout | 90 seconds |
+| Ping interval | 25 seconds |
+| Total connections | 4096 |
+| WebSocket handshake timeout | 10 seconds |
+| Registration timeout | 10 seconds |
+
+These are current `bins/neutrino-relay/src/main.rs` constants; older deployment notes contain outdated timeouts.
+
+<Warning>The operator sees client IPs, timing, volume, and the derived ticket. It does not receive plaintext, filenames, or the token. Encryption does not prevent traffic analysis.</Warning>

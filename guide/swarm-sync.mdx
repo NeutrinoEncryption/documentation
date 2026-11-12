@@ -1,10 +1,10 @@
 ---
-title: "Swarm sync"
-description: "Multi-host folder synchronization is planned."
+title: "Continuous Swarm Sync"
+description: "Development status in Neutrino v0.2.0."
 ---
 
-## Status
+<Warning>In development / not yet available as a complete end-to-end product.</Warning>
 
-Local sync tracking components exist, but delivery and convergence between independent peers have not been demonstrated as a complete product. Conflict resolution, offline recovery and deletion behavior require end-to-end verification.
+The planned design uses FastCDC chunks, BLAKE3 Merkle-DAG state, and deterministic conflict branching. Core components do not yet provide complete multi-host folder synchronization. Do not rely on this subsystem for backups, repository durability, or protected connectivity.
 
-This milestone follows secure, setup-free internet file transfer. It requires integrated daemon-to-daemon operation, a threat model and real end-to-end tests before it is described as ready.
+Use the [quickstart](/quickstart) for released file and folder transfers.

@@ -1,13 +1,36 @@
 ---
-title: "Ephemeral file beam"
-description: "Try the current direct file transfer beta."
+title: "File and folder transfer"
+description: "Invitations, connection selection, verification, and resume."
 ---
 
-The current transfer sends over QUIC to the address in the sender's invitation. It works only when that address is reachable, such as loopback or an appropriate LAN. Automatic internet discovery, NAT traversal and relay fallback are planned and are not integrated.
-
 ```bash
-neutrino send /path/to/file
-neutrino receive <SESSION_CODE> /path/to/destination
+neutrino send ./report.pdf
+neutrino receive neu1_REPLACE_WITH_ACTUAL_CODE ./downloads
 ```
 
-Share the actual `neu1_` code privately: it contains an authentication secret. The receiver stages data and checks file integrity before finalizing it. Real interruption and reconnection with resumption remains a release verification task; do not assume it is reliable yet. See the quickstart and product roadmap for status.
+Run receive on the recipient machine using the real code. A folder uses the same commands and arrives as `destination/<folder-name>`. The daemon streams folders as tar archives and extracts verified archives into a staging directory before renaming to the final folder.
+
+## Connection sequence
+
+<Steps>
+<Step title="Discover sender addresses">
+The sender binds UDP and queries STUN on that socket, trying `neutrinoapi.peretas.live:3478` first. Its invitation encodes address candidates plus a random 16-byte authentication token.
+</Step>
+<Step title="Try direct QUIC">
+The receiver races QUIC connections to all invitation candidates for four seconds. STUN discovers an address; router and firewall behavior still determine direct reachability.
+</Step>
+<Step title="Use relay fallback">
+If direct connection fails, peers pair at `wss://neutrinoapi.peretas.live/v1/relay` using a ticket derived locally from the token. The relay does not receive the token. The same authenticated handshake and encrypted transfer run over the relay path.
+</Step>
+<Step title="Verify and commit">
+Peers perform a token-authenticated X25519 + ML-KEM-768 exchange and protect frames with XChaCha20-Poly1305. FastCDC chunks are BLAKE3-verified; the whole-file root is checked before atomic commit from hidden `.nwp.part` staging. The sender waits for the receiver's commit ACK.
+</Step>
+</Steps>
+
+## Resume
+
+Preserve staged data and retry with the same source contents, destination, and a live sender invitation. The receiver verifies the matching contiguous staged prefix against the manifest and acknowledges it so the sender can skip those chunks. If the old sender session ended, start another send and use its new code.
+
+<Note>Resume requires matching manifest data and preserved staging state. It does not automatically reconnect a terminated CLI session. Explicit cancellation may clean up staging files.</Note>
+
+See [flow control](/protocol/flow-control), [configuration](/api-reference/cli), and [troubleshooting](/guide/troubleshooting).

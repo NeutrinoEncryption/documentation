@@ -1,86 +1,30 @@
 ---
-title: "Flow Control & Buffer Discipline"
-description: "Sliding window flow-control, Quinn stream gap bounded discipline, 32 MB OS socket buffers, and FastCDC pipeline."
+title: "Flow control and streaming"
+description: "Bounded transfer windows, UDP socket tuning, chunking, and commit acknowledgement."
 ---
 
-## The Line-Rate Challenge
+## Sliding window
 
-High-speed UDP and QUIC transfers across high-bandwidth, high-latency links (e.g. 10 Gbps cross-continental transits) encounter two severe failure modes:
-1. **Quinn Stream Gap Crashes**: In unconstrained out-of-order delivery, Quinn throws `INTERNAL_ERROR: "too many gaps in stream buffer"` when dropped packets fragment the reassembly ring.
-2. **Kernel Socket Drops**: Under physical line rates, default OS socket buffers (typically 212 KB on Linux or 64 KB on Windows) overflow within milliseconds, causing cascading packet drops and congestion window collapses.
+The sender caps unacknowledged data at 16 MB (`16 * 1024 * 1024` bytes, or 16 MiB). Authenticated `ChunkAck` messages advance the window. A full window pauses further sends until acknowledgements release capacity.
 
-Neutrino v2 solves both problems with an explicit, coordinated buffer hierarchy.
+This is an application window, not a total memory ceiling. Manifests, chunk buffers, compression state, and transport buffers also consume memory. No universal process RSS or throughput guarantee is implied.
 
----
+## UDP socket buffers
 
-## 1. The 16 MB Sliding Window
+Before initializing QUIC endpoints, `neutrino-transport` requests 32 MB (`33,554,432` bytes) for both `SO_RCVBUF` and `SO_SNDBUF` via `socket2`. Effective sizes depend on the operating system and its limits. This reduces burst losses but cannot guarantee loss-free delivery.
 
-Neutrino places an authenticated, hard-capped 16 MB sliding window above the QUIC transport layer:
+## Chunk pipeline
 
-```mermaid
-sequenceDiagram
-    participant S as Sender (neutrinod)
-    participant Q as Quinn QUIC Transport
-    participant R as Receiver (neutrinod)
+| FastCDC parameter | Default |
+| --- | --- |
+| Minimum | 256 KiB |
+| Target average | 1 MiB |
+| Maximum | 4 MiB |
 
-    Note over S: Bounded Ring: Max 16 MB in-flight
-    S->>Q: Stream Chunks 0..15 (1 MB each)
-    Q->>R: Transmit over UDP / Hole-Punched NAT
-    Note over S: Window Full (16 MB unacknowledged). Read paused.
-    R-->>R: Drain Chunks 0..3 to Staging File
-    R->>Q: Emit CHUNK_ACK (Seq 3, Window Available: 4 MB)
-    Q->>S: Deliver CHUNK_ACK
-    Note over S: Window slides forward. Sume reading disk.
-    S->>Q: Stream Chunks 16..19
-```
+Files stream through bounded chunk buffers rather than being loaded whole into memory. Entropy classification skips compression for high-entropy data and uses zstd level 3 for compressible chunks. Boundaries and compression ratio depend on content.
 
-* **Window Cap**: Unacknowledged in-flight payload $\le 16\text{ MB}$ (16 chunks @ 1 MB target).
-* **Receiver Cadence**: Receiver emits `CHUNK_ACK` every 4 received chunks or every 4 MB drained to disk.
-* **Bounded RSS**: Bounded memory is a design goal. Large-file and sustained memory limits require reproducible end-to-end verification; existing beta measurements do not prove a universal 128 MB ceiling.
+## Resume and completion
 
----
+The receiver checks chunks before staging. On retry, it can verify and acknowledge a matching contiguous prefix so the sender skips it. Whole-file verification and filesystem commit must succeed before the receiver emits the final commit ACK.
 
-## 2. 32 MB Kernel Socket Buffers
-
-Before initializing Quinn endpoints, Neutrino configures low-level socket options via `socket2`:
-
-```rust
-use socket2::{Socket, Domain, Type, Protocol};
-
-let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
-socket.set_recv_buffer_size(33_554_432)?; // 32 MB SO_RCVBUF
-socket.set_send_buffer_size(33_554_432)?; // 32 MB SO_SNDBUF
-socket.set_nonblocking(true)?;
-```
-
-This ensures that momentary CPU scheduling jitter on the receiver will not drop arriving bursts of UDP packets.
-
----
-
-## 3. FastCDC & Entropy Classification
-
-Data streams through the **FastCDC v2020** chunking engine:
-
-| Parameter | Size | Purpose |
-| :--- | :--- | :--- |
-| **Minimum Chunk** | 256 KB | Prevents packet flood overhead on small cutpoints. |
-| **Average Chunk** | 1 MB | Optimal target for 16 MB window and NVMe disk staging. |
-| **Maximum Chunk** | 4 MB | Hard ceiling preventing memory bloat on low-entropy uniform blocks. |
-
-### 4 KB Shannon Entropy Classifier
-
-Compressing already-compressed data (e.g., `.mp4`, `.zip`, `.zst`, or encrypted blobs) wastes significant CPU cycles. Neutrino computes the Shannon entropy over an initial 4 KB sample of each chunk:
-
-$$H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)$$
-
-* **$H(X) \ge 7.9$**: Marked incompressible. Bypasses `zstd` entirely, preserving CPU cycles for encryption and transport.
-* **$H(X) < 7.9$**: Marked compressible. Passed through streaming `zstd` level 3 and tagged with `Flags::COMPRESSED` (`0x01`).
-
----
-
-## 4. Pre-Flight Storage Allocation
-
-To prevent catastrophic out-of-space halts during multi-gigabyte transfers:
-1. Receiver extracts total payload length from `TRANSFER_MANIFEST`.
-2. Inspects target filesystem headroom via `fs2::available_space`.
-3. Calls `fs2::FileExt::allocate` (`fallocate` on Linux, `SetFileValidData` on Windows) to pre-allocate continuous disk blocks, eliminating fragmentation and guaranteeing that transfers never fail mid-stream due to `ENOSPC`.
+`TransferComplete` alone does not prove receiver success. The sender waits for verified commit confirmation and fails if it does not arrive. See [file transfer](/guide/file-beam).

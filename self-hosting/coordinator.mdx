@@ -1,8 +1,35 @@
 ---
-title: "Rendezvous coordinator"
-description: "Planned discovery service."
+title: "STUN and default services"
+description: "Operate STUN alongside the pairing relay and download service."
 ---
 
-A default, operated discovery service is planned for setup-free internet transfers. The current transfer workflow does not use a public rendezvous coordinator. There is no supported coordinator deployment or configuration procedure to follow here yet.
+The transfer workflow uses STUN to discover sender addresses and a blind relay when direct QUIC fails. Invitations carry candidates directly; this workflow does not require a separate invitation lookup coordinator.
 
-The design must authenticate candidate exchange without exposing invitation secrets or file contents to the service. Operators can still observe network metadata such as IP addresses, timing and traffic volume. The threat model, retention policy, service operation and security review remain release tasks. Optional self-hosting is a future capability.
+## Operated layout
+
+| Service | Endpoint / listener |
+| --- | --- |
+| coturn STUN | `neutrinoapi.peretas.live:3478`, UDP/TCP |
+| Pairing relay | `wss://neutrinoapi.peretas.live/v1/relay` |
+| Relay backend | `127.0.0.1:8787` |
+| Health | `https://neutrinoapi.peretas.live/health` |
+| Archives | `https://neutrinoapi.peretas.live/dl/` |
+
+The operated server uses Ubuntu 24.04, nginx for TLS/WebSocket proxying, Let's Encrypt certificates, and coturn in **stun-only** mode. It does not offer TURN relaying; `neutrino-relay` is a separate service.
+
+## STUN-only deployment
+
+A minimal coturn configuration includes:
+
+```ini
+listening-port=3478
+stun-only
+```
+
+Allow UDP/TCP 3478 in host and provider firewalls, configure DNS to the server, and manage coturn through its system service. Check service logs and perform a real transfer after deployment.
+
+<Note>The STUN pool is compiled into `neutrino-transport`. `NEUTRINO_RELAY_URL` changes only the relay endpoint. A custom STUN pool currently requires rebuilding with a source change.</Note>
+
+STUN observes public source addresses and request timing, not invitation secrets or filenames. See the [relay guide](/self-hosting/relay) for TLS deployment and metadata exposure.
+
+The source checkout's `deploy/SERVER.md` records the operated service units and maintenance paths. Its older timeout prose is superseded by the current relay source constants documented here.

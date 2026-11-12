@@ -1,0 +1,62 @@
+---
+title: "Install and update"
+description: "Select your platform, pin a version, and verify downloads."
+---
+
+## Install
+
+<Tabs>
+<Tab title="Linux / macOS">
+```bash
+curl -fsSL https://neutrinoapi.peretas.live/install.sh | sh
+```
+Pin v0.2.0 by passing the variable to the shell executing the installer:
+```bash
+curl -fsSL https://neutrinoapi.peretas.live/install.sh | NEUTRINO_VERSION=v0.2.0 sh
+```
+</Tab>
+<Tab title="Windows">
+```powershell
+irm https://neutrinoapi.peretas.live/install.ps1 | iex
+```
+Pin a version in the current PowerShell session:
+```powershell
+$env:NEUTRINO_VERSION = 'v0.2.0'
+irm https://neutrinoapi.peretas.live/install.ps1 | iex
+```
+</Tab>
+</Tabs>
+
+Run `neutrino --version`. The installer installs both `neutrino` and `neutrinod`. Keep them together so automatic daemon startup finds the sibling binary. Open a new terminal if needed for `PATH` changes.
+
+## Update
+
+Finish active transfers and rerun the installer. It stops the daemon, replaces both binaries, and preserves the data directory. Remove `NEUTRINO_VERSION` from your environment to follow latest again.
+
+## Manual downloads
+
+Use the [latest download directory](https://neutrinoapi.peretas.live/dl/latest/) or [v0.2.0](https://neutrinoapi.peretas.live/dl/v0.2.0/). Downloads come from the Neutrino server rather than GitHub Releases.
+
+| Platform | Target |
+| --- | --- |
+| Linux x86_64 | `x86_64-unknown-linux-musl` |
+| Linux ARM64 | `aarch64-unknown-linux-musl` |
+| macOS Apple silicon | `aarch64-apple-darwin` |
+| macOS Intel | `x86_64-apple-darwin` |
+| Windows x86_64 | `x86_64-pc-windows-msvc` |
+
+Download `SHA256SUMS` from the same release directory and compare your archive's SHA-256 before extracting both executables onto your `PATH`.
+
+<CodeGroup>
+```bash Linux
+sha256sum YOUR_DOWNLOADED_ARCHIVE
+```
+```bash macOS
+shasum -a 256 YOUR_DOWNLOADED_ARCHIVE
+```
+```powershell Windows
+Get-FileHash .\YOUR_DOWNLOADED_ARCHIVE -Algorithm SHA256
+```
+</CodeGroup>
+
+Checksums detect corrupted downloads; they are not independent release signatures.
