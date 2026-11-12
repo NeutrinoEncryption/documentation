@@ -1,0 +1,40 @@
+---
+title: "Changelog"
+description: "Release notes for Neutrino, newest first."
+---
+
+Release notes mirror the Neutrino website. [Install or update](/installation) to use the latest release.
+
+<Update label="v0.3.1" description="Fewer relayed transfers">
+
+- IPv6 direct connections, which reach many mobile and carrier-grade NAT networks without the relay.
+- More persistent hole punching (8 seconds, repeated attempts, predicted ports).
+- Larger QUIC windows for fast long-distance links.
+- Plain command names and clearer CLI help.
+
+</Update>
+
+<Update label="v0.3.0" description="A more direct connection">
+
+- Coordinated NAT hole punching connects computers behind different routers.
+- Transfer output shows the connection path: direct, hole-punched, or relayed.
+- The daemon survives SSH logout.
+- Faster startup when DNS is broken.
+- Windows: no hang when output is piped, readable errors, installer fixes.
+
+</Update>
+
+<Update label="v0.2.1" description="Finishing touches">
+
+- Fixed commit confirmation over QUIC.
+- Transfer progress no longer exceeds 100%.
+
+</Update>
+
+<Update label="v0.2.0" description="The first internet release">
+
+- Encrypted relay fallback for networks that cannot connect directly.
+- File and folder transfers across the internet.
+- Installers for Linux, macOS, and Windows.
+
+</Update>

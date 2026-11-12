@@ -27,4 +27,4 @@ Files stream through bounded chunk buffers rather than being loaded whole into m
 
 The receiver checks chunks before staging. On retry, it can verify and acknowledge a matching contiguous prefix so the sender skips it. Whole-file verification and filesystem commit must succeed before the receiver emits the final commit ACK.
 
-`TransferComplete` alone does not prove receiver success. The sender waits for verified commit confirmation and fails if it does not arrive. See [file transfer](/guide/file-beam).
+`TransferComplete` alone does not prove receiver success. The sender waits for verified commit confirmation and fails if it does not arrive. See [file transfer](/guide/file-transfer).

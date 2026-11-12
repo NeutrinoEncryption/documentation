@@ -3,6 +3,8 @@ title: "Crypto and privacy model"
 description: "Invitation authentication, hybrid keys, encrypted frames, and relay visibility."
 ---
 
+See [Privacy & security](/privacy-security) for the audit warning, operator visibility, and service policy.
+
 ## Invitation authentication
 
 A `neu1_...` invitation encodes address candidates and a random 16-byte token. It is encoded, not encrypted. Anyone holding it can read those addresses and has the transfer authentication secret. Share it privately.
@@ -39,6 +41,8 @@ let ticket = &derived[..16];
 | STUN operator | Public source IP/port and request timing |
 | Invitation recipient | Encoded candidate addresses and token |
 | Receiver endpoint | Decrypted metadata and contents |
+
+The pre-transfer rendezvous exchanges network candidates and a path decision through the relay; these control messages are not encrypted file metadata. Both peers need v0.3.0 or newer for ticket context v2.
 
 The relay receives neither the raw invitation token nor plaintext filenames or contents. Transfer metadata travels inside protected transfer frames.
 

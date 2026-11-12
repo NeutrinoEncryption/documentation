@@ -5,16 +5,28 @@ description: "Deploy neutrino-relay behind nginx TLS and preserve its pairing pr
 
 ## Build and install
 
-From a source checkout using the workspace's Rust toolchain:
+The [public relay repository](https://github.com/NeutrinoEncryption/neutrino-relay) contains the complete server and deployment examples. It is licensed **MIT OR Apache-2.0**, at your option. Neutrino's CLI and daemon remain proprietary.
+
+With Git and the repository's Rust toolchain installed:
 
 ```bash
-cargo build --release -p neutrino-relay
+git clone https://github.com/NeutrinoEncryption/neutrino-relay.git
+cd neutrino-relay
+cargo build --release
 sudo install -m755 target/release/neutrino-relay /usr/local/bin/neutrino-relay
 ```
 
+The repository supplies `deploy/neutrino-relay.service`, `deploy/nginx.conf` (TLS, WebSocket, per-IP limits), and optional `deploy/turnserver.conf` (STUN only, not TURN). Use those as the deployment baseline or the minimal examples below.
+
 The listener defaults to `127.0.0.1:8787`; `NEUTRINO_RELAY_BIND` overrides it. Keep the backend on loopback behind TLS.
 
-Create a dedicated unprivileged `neutrino-relay` user and a systemd unit at `/etc/systemd/system/neutrino-relay.service`:
+Create a dedicated unprivileged user:
+
+```bash
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin neutrino-relay
+```
+
+Create a systemd unit at `/etc/systemd/system/neutrino-relay.service`:
 
 ```ini
 [Unit]
@@ -54,7 +66,7 @@ location /v1/relay {
 
 Run `nginx -t` before reloading. Expose HTTPS 443, keep 8787 private, and configure per-client connection/request limits at the proxy. Monitor with `journalctl -u neutrino-relay -f`.
 
-On both clients, stop the daemon, set `NEUTRINO_RELAY_URL=wss://YOUR_HOST/v1/relay`, and restart. Set `NEUTRINO_DIRECT=off` on the receiver to test the relay path. Complete a file transfer and check verified receipts; a health endpoint alone does not test pairing or forwarding.
+On both clients, stop the daemon, set `NEUTRINO_RELAY_URL=wss://YOUR_HOST/v1/relay`, and restart. Set `NEUTRINO_DIRECT=off` on both daemons to test the relay path. Complete a file transfer and check verified receipts; a health endpoint alone does not test pairing or forwarding.
 
 ## Pairing protocol
 
@@ -64,6 +76,8 @@ On both clients, stop the daemon, set `NEUTRINO_RELAY_URL=wss://YOUR_HOST/v1/rel
 4. Both receive an empty-envelope pairing notice.
 5. Subsequent binary messages are forwarded verbatim.
 
+A newer registration for the same ticket replaces a stale one. Clients wrap payloads as `[ticket][u32 BE length][payload]`; the server forwards bytes without interpreting the file-transfer protocol. The paired channel first coordinates candidates and the path decision; only failed direct attempts use it to carry encrypted file data. Both peers need v0.3.0 or newer (ticket context v2).
+
 Clients [derive tickets locally](/protocol/crypto-model); the raw token is never registered. Preserve registration and pairing-notice compatibility when updating the server.
 
 ## Current limits
@@ -72,6 +86,7 @@ Clients [derive tickets locally](/protocol/crypto-model); the raw token is never
 | --- | --- |
 | WebSocket message | 4 MiB |
 | Pair wait | 1 hour |
+| Pending registrations | 2048 |
 | Idle timeout | 90 seconds |
 | Ping interval | 25 seconds |
 | Total connections | 4096 |
@@ -81,3 +96,9 @@ Clients [derive tickets locally](/protocol/crypto-model); the raw token is never
 These are current `bins/neutrino-relay/src/main.rs` constants; older deployment notes contain outdated timeouts.
 
 <Warning>The operator sees client IPs, timing, volume, and the derived ticket. It does not receive plaintext, filenames, or the token. Encryption does not prevent traffic analysis.</Warning>
+
+## Operations and privacy
+
+Keep the backend private and certificates renewed. The relay pings live clients, limits idle and unpaired connections, and keeps pairing state only in memory. It does not persist tickets or payloads. Proxy/hosting logs may still expose IPs and timing; configure retention and access controls for your deployment. See [privacy & security](/privacy-security).
+
+The relay's one-hour pending-pair limit is a server limit, not a promise that every client invocation waits that long. Client connection and pairing timeouts also apply. Monitor service health, connection counts, resource use, and verified transfers after updates. STUN deployment is separate; see [STUN and default services](/self-hosting/coordinator).

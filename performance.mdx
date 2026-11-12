@@ -1,0 +1,42 @@
+---
+title: "Performance"
+description: "Measured throughput and the network, CPU, and disk limits behind it."
+---
+
+Your connection's line speed is usually the limit for transfers across the internet, especially the sender's upload speed on a home connection. Relay location, packet loss, latency, CPU, disk, and compression also affect throughput. These measurements are examples, not guaranteed speeds.
+
+## Home cable connection: 200 MB
+
+Release builds transferred a 200 MB random file between a Windows PC on a home cable connection and a DigitalOcean NYC server on November 12, 2026. The home NAT was endpoint-independent and port-preserving.
+
+| Path | Scenario | Time | Throughput |
+| --- | --- | --- | --- |
+| Direct | Public server to home PC | 23.8 s | ≈ 8.3 MB/s |
+| Direct (hole-punched) | Server firewall blocked unsolicited inbound UDP to simulate a NAT-like boundary | 23.0 s | ≈ 8.7 MB/s |
+| Relay | Server through a relay on the same server to the PC | 25.2 s | ≈ 7.9 MB/s |
+| Relay | PC through relay back to PC; forced relay | 44.0 s | ≈ 4.5 MB/s |
+
+The direct results correspond to roughly 67–70 Mbit/s, likely the home line's limit. The slower relay test traversed the home uplink in both sending and receiving roles; it is not a general relay penalty. Outputs matched the inputs (SHA-1 comparisons for the server-to-PC runs, byte comparison for PC-to-PC).
+
+## Windows loopback: 1 GB
+
+A Windows development machine transferred **1,000,000,000 bytes** of random input. Timings cover receiver launch through completion, including startup and discovery. Forced relay used a relay on the same machine.
+
+| Path | Time | Throughput |
+| --- | --- | --- |
+| Direct | 83.052 s | ≈ 12.0 MB/s |
+| Relay | 86.613 s | ≈ 11.5 MB/s |
+
+Both peers completed BLAKE3 verification and receiver output matched the source SHA-256. These CPU/disk-bound development-machine runs are not an internet speed ceiling. They were single runs during concurrent workspace builds.
+
+## What the measurements establish
+
+MB/s is decimal megabytes per second; Mbit/s is megabits per second (eight bits per byte). CLI rate-limit options use **megabits per second**, not MB/s.
+
+The v0.3.1 QUIC stream receive and send budgets are 16 MiB, alongside the authenticated 16 MiB application window. The larger windows remove a calculated flow-control ceiling on fast, high-latency links. These tests do not demonstrate a measured high-latency speed improvement, native IPv6 internet performance, or reliable predicted-port traversal of symmetric NAT/CGNAT.
+
+## Investigate slow transfers
+
+Check the CLI's `Path:` line, sender upload capacity, receiver download capacity, and any `--max-mbps` or `NEUTRINO_MAX_MBPS` limit. Compare a LAN transfer to separate local CPU/disk limits from internet limits. Already-compressed or encrypted files generally gain little from compression. A distant or busy relay can add another bottleneck.
+
+See [troubleshooting](/guide/troubleshooting) and [flow control](/protocol/flow-control).

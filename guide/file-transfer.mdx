@@ -1,0 +1,62 @@
+---
+title: "File Transfer"
+description: "Send files and folders with verified completion and automatic connection selection."
+---
+
+```bash
+# Sender
+neutrino send ./report.pdf
+# Receiver, on the other computer
+neutrino receive neu1_REPLACE_WITH_ACTUAL_CODE ./downloads
+```
+
+Use the full code printed by the sender and keep that sender running. For a folder, use the same commands: `neutrino send ./photos` arrives as `./downloads/photos`. Folders travel as tar archives and are extracted into staging before the final rename.
+
+## Connection flow
+
+<Steps>
+<Step title="Discover addresses">
+Both peers use tuned dual-stack UDP sockets: IPv4 and IPv6 share one socket where supported, with IPv4 fallback. The sender discovers public addresses through STUN and includes address candidates and a random 16-byte token in its invitation. Global IPv6 candidates can provide a direct path even when IPv4 is behind carrier-grade NAT. IPv6 availability does not guarantee reachability.
+</Step>
+<Step title="Try the invitation directly">
+The receiver races QUIC connections to the invitation's candidates for about **two seconds**. This often succeeds on a LAN or when the sender has a reachable public IPv4 or IPv6 address.
+</Step>
+<Step title="Meet on the relay">
+If the first attempt fails, both peers rendezvous at the relay using a locally derived, hashed ticket. The receiver sends its own IPv4 and IPv6 candidates through the paired channel. The raw invitation secret is never registered with the relay.
+</Step>
+<Step title="Try coordinated hole punching">
+Both sides fire QUIC handshakes for about **eight seconds**. The sender re-fires roughly every second while concurrently accepting incoming connections. Both sides try the original ports plus predicted ports **±1–3** around public IPv4 mappings. Prediction is bounded and cannot overcome every NAT or firewall.
+
+The receiver sends a decision byte: `D` selects the punched direct connection; `R` retains the relay. A successful punched connection carries the file directly between peers.
+</Step>
+<Step title="Use the relay only as a last resort">
+If punching fails, the already-paired relay carries the end-to-end encrypted stream. There is no automatic migration to a direct path once relay data transfer has begun.
+</Step>
+<Step title="Verify and commit">
+A token-authenticated X25519 + ML-KEM-768 exchange establishes session keys. Frames are protected with XChaCha20-Poly1305. Each FastCDC chunk and the whole-file BLAKE3 root are verified before commit from hidden `.nwp.part` staging. The sender reports success only after the receiver acknowledges the verified commit.
+</Step>
+</Steps>
+
+Both peers need **v0.3.0 or newer** for the relay rendezvous protocol (relay ticket context v2). The v0.3.1 dual-stack and punching improvements retain that compatibility. Use the latest release on both computers for best results.
+
+## Read the path
+
+The CLI prints one of these completion lines:
+
+```text
+Path: direct
+Path: direct (hole-punched)
+Path: relay
+```
+
+A hole-punched path uses the relay for coordination, then sends file data directly. A relay path is expected on restrictive networks; it still encrypts the file end to end. Discovery and rendezvous add time beyond the two-second and eight-second attempt windows.
+
+## Resume an interruption
+
+Preserve staged data and retry with the same source contents and destination. The receiver verifies a matching contiguous staged prefix and acknowledges it so the sender can skip those chunks. If the original sender session ended, start another send and use its new code.
+
+<Note>Resume requires matching manifest data and preserved staging state. It does not automatically reconnect a terminated CLI session. Explicit cancellation may clean up staging files.</Note>
+
+## Protect the invitation
+
+The invitation is encoded, not encrypted. It contains candidate addresses and the token that authorizes joining the transfer. Share it privately, keep the source unchanged during transfer, and wait for verified completion. See [privacy & security](/privacy-security), [flow control](/protocol/flow-control), and [troubleshooting](/guide/troubleshooting).

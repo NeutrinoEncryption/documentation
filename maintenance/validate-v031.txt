@@ -1,0 +1,1 @@
+{"passed":true,"summary":{"errors":0,"warnings":0,"byRule":{}},"diagnostics":[],"build":{"ran":true,"passed":true}}

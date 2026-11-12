@@ -9,13 +9,13 @@ Run `neutrino daemon status`. Keep both binaries from the same release together,
 
 ## Transfer cannot connect
 
-Keep the sender running and copy its full current `neu1_...` invitation. Allow up to about seven seconds for direct and hole-punch attempts before the relay takes over. Both sides must run v0.3.0 or newer. Check outbound HTTPS/WebSocket access and ensure `NEUTRINO_RELAY_URL` is not `off`.
+Keep the sender running and copy its full current `neu1_...` invitation. Direct attempts take about two seconds, then coordinated hole punching takes about eight seconds after relay pairing. Discovery, DNS, and rendezvous add time, so ten seconds is not an overall connection deadline. Both sides must run v0.3.0 or newer. Check outbound HTTPS/WebSocket access and ensure `NEUTRINO_RELAY_URL` is not `off`.
 
-To test relay-only receive, stop the receiver daemon, set `NEUTRINO_DIRECT=off`, and retry. Disabling both relay and direct connectivity leaves no usable path. See [environment settings](/api-reference/cli).
+To test relay-only transfers, stop both daemons, set `NEUTRINO_DIRECT=off` in both environments, and retry. Disabling both relay and direct connectivity leaves no usable path. See [environment settings](/api-reference/cli).
 
 ## Interrupted transfer
 
-Preserve `.nwp.part` and `.nwp.state` files and retry with unchanged source contents and the same destination. See [resume](/guide/file-beam). Do not rename a partial file to its final name: it has not passed whole-file verification.
+Preserve `.nwp.part` and `.nwp.state` files and retry with unchanged source contents and the same destination. See [resume](/guide/file-transfer). Do not rename a partial file to its final name: it has not passed whole-file verification.
 
 ## Verification or commit fails
 
@@ -24,3 +24,21 @@ Check destination permissions and free space. Keep the source unchanged during t
 ## Collect diagnostics
 
 Finish other transfers, stop the daemon, and set `NEUTRINO_LOG_LEVEL=debug` before starting it again. Environment changes do not reconfigure an existing daemon. Record versions, platform, error text, and whether direct or relay was used. Redact invitation codes, cookies, filenames, and local paths from shared logs and receipts.
+
+## The path is always relay
+
+A relay path is normal when NAT or a firewall prevents direct QUIC. Permit outbound UDP if your network policy allows it; no manual port forwarding is required. IPv6 may bypass IPv4 CGNAT when both endpoints have reachable IPv6. Port prediction cannot guarantee a path through symmetric NAT or strict corporate firewalls.
+
+Check that `NEUTRINO_DIRECT` is unset. Use v0.3.1 on both peers for dual-stack support and more persistent punching. Relay rendezvous itself requires v0.3.0 or newer on both peers.
+
+## Slow transfer
+
+Read `Path:` and check the sender's upload speed, available disk space, CPU load, and `send --max-mbps` options. Compare against the [performance measurements](/performance); loopback development-machine numbers are not network speed promises.
+
+## Command is not found
+
+Open a new terminal after installation and confirm that `~/.local/bin` (Unix) or `%LOCALAPPDATA%\Programs\Neutrino` (Windows) is on your user `PATH`. Keep `neutrino` and `neutrinod` together. See [installation](/installation).
+
+## Sync, Git, or tunnel commands fail
+
+[Sync](/guide/sync), [Git over Neutrino](/guide/git), and [Mesh networking](/guide/mesh) are not yet available. Use File Transfer for released file and folder workflows.

@@ -1,21 +1,29 @@
 ---
 title: "Neutrino"
-description: "Secure internet file and folder transfer with Neutrino v0.3.0."
+description: "File and folder transfer across the internet, by Peretas Technologies."
 ---
 
-Neutrino v0.3.0 sends files and folders between two machines by sharing a `neu1_...` invitation. With the default services, you need no account, manual port forwarding, or personal server. Install on both machines and share the sender's code privately.
+Neutrino v0.3.1 sends files and folders between computers using a shared invitation. No account, manual port forwarding, or personal server is required with the default services.
+
+<Warning>Neutrino has not been independently security-audited. Do not use it to transfer confidential or regulated files.</Warning>
 
 <Columns cols={2}>
-<Card title="Start a transfer" icon="bolt" href="/quickstart">Install and send your first file.</Card>
-<Card title="How it works" icon="network-wired" href="/guide/file-beam">Direct QUIC with encrypted relay fallback.</Card>
+<Card title="Quickstart" icon="bolt" href="/quickstart">Send your first file in minutes.</Card>
+<Card title="Install Neutrino" icon="download" href="/installation">Linux, macOS, and Windows downloads.</Card>
+<Card title="File Transfer" icon="network-wired" href="/guide/file-transfer">Understand direct connections and relay fallback.</Card>
+<Card title="Privacy & security" icon="shield" href="/privacy-security">Understand encryption and service visibility.</Card>
 </Columns>
 
-## Available now
+## Available in v0.3.1
 
-File and folder transfer includes STUN-discovered address candidates, direct QUIC, relay fallback, hybrid key exchange, encrypted frames, BLAKE3 verification, staging, and resume support. The CLI auto-starts `neutrinod`. The daemon and core crates handle network, crypto, and disk operations; clients communicate through authenticated local IPC.
+**File Transfer** supports files and folders, direct IPv4 and IPv6 QUIC connections, coordinated NAT hole punching, and an encrypted relay as a last resort. Transfers use hybrid X25519 + ML-KEM-768 key exchange, XChaCha20-Poly1305 encryption, and BLAKE3 verification before committing the received file. Interrupted transfers can reuse verified staged data.
 
-<Warning>Continuous Swarm Sync, Singularity Git (`git-remote-neutrino`), and mesh tunneling are in development / not yet available as complete end-to-end products. Component code and CLI entries do not establish a working released workflow.</Warning>
+The CLI starts `neutrinod` automatically. The daemon handles networking, encryption, and disk operations; the CLI controls it through authenticated local IPC.
 
-## Privacy boundary
+[Sync](/guide/sync), [Git over Neutrino](/guide/git), and [Mesh networking](/guide/mesh) are **not yet available**. Command names and internal components do not establish a released workflow.
 
-The relay sees client IPs, timing, traffic volume, and a derived ticket. It does not receive plaintext contents, filenames, or the invitation token. Possession of an invitation authorizes joining its transfer. See the [crypto model](/protocol/crypto-model).
+## By Peretas Technologies
+
+Neutrino is proprietary, closed-source software by [Peretas Technologies](https://peretas.live). Only the [relay server](https://github.com/NeutrinoEncryption/neutrino-relay) (MIT OR Apache-2.0) and [these docs](https://github.com/NeutrinoEncryption/documentation) are open source. The documentation site is served at `docs.neutrino.peretas.live`.
+
+See the [changelog](/changelog) for release changes and [performance](/performance) for measured results.

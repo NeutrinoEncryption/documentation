@@ -1,0 +1,41 @@
+---
+title: "Privacy & security"
+description: "Encryption, invitation handling, and what the default services can observe."
+---
+
+<Warning>Neutrino has not been independently security-audited. Do not use it to transfer confidential or regulated files.</Warning>
+
+[Peretas Technologies](https://peretas.live) operates Neutrino and its default STUN, rendezvous, relay, and download services. Neutrino is proprietary and closed source. The [relay](https://github.com/NeutrinoEncryption/neutrino-relay) and [documentation](https://github.com/NeutrinoEncryption/documentation) are open source.
+
+## Your files
+
+Transfer contents and filenames are encrypted on your computer before transmission. Session keys are negotiated peer to peer using hybrid X25519 + ML-KEM-768; XChaCha20-Poly1305 protects transfer frames. The relay does not receive the plaintext file, filenames, invitation token, or encryption keys. Neither relay nor STUN retains file contents. Neutrino provides neither cloud storage nor a recoverable backup.
+
+Chunk and whole-file BLAKE3 verification precede the receiver's final commit. This detects corrupted content; it does not certify that a received file is safe to open or establish the sender's human identity.
+
+## Connection metadata
+
+| Observer | Can see | Does not receive |
+| --- | --- | --- |
+| Relay operator | Client IPs, connection timing, traffic volume, and a 16-byte derived hashed ticket used for pairing | Plaintext file contents, filenames, raw invitation code/token, session encryption keys |
+| STUN operator | Public source IP and port, request timing and request volume | File contents, filenames, invitation token, relay ticket, session keys |
+| Direct peer | Other peer's reachable IP addresses and the transfer it participates in | An independently verified human identity merely from possessing the code |
+| Download/website infrastructure | Request IP, requested URL, and timing | File-transfer plaintext |
+
+The ticket is derived locally with BLAKE3 and the context `neutrino v2 relay ticket v2`. It is not the raw invitation secret. Coordination also exchanges network candidates through the paired relay channel before encrypted file transfer begins; do not assume candidate addresses or path decisions are hidden from the relay operator.
+
+Even a successful hole-punched transfer contacts the relay for coordination. Direct transfers still perform address discovery. Encryption does not hide traffic timing or volume, and Neutrino is not an anonymity network.
+
+## Invitations and endpoints
+
+A `neu1_...` invitation encodes network candidates and a secret token; it is not encrypted. Anyone holding it has the transfer authentication secret. Send it only to the intended recipient. JSON receipts can contain the invitation too: redact codes, cookies, local paths, and filenames before sharing diagnostics.
+
+Protect both computers. Encryption cannot protect plaintext from malware or another user with access to an endpoint. Ephemeral session keys and monotonic nonces are implementation protections, not evidence of an independent audit. See the [crypto model](/protocol/crypto-model).
+
+## Logs and service policy
+
+The relay implementation keeps pairing state in memory and does not log tickets or payloads. That does not mean the surrounding hosting stack has no logs. The website policy describes minimal, short-lived operational logs and routine rotation, with possible preservation for legal requirements or a specific security incident. It does not specify a confirmed numeric retention period.
+
+Connection metadata supports operation, diagnostics, and abuse prevention; the policy says it is not sold or used for advertising. Hosting providers process connection/request information, potentially outside your country. Operators of self-hosted services set their own policies.
+
+Read the [website privacy policy](https://neutrino.peretas.live/privacy) for the service policy and privacy requests. Its statements about website trackers and browser preferences apply to that website; this documentation is hosted separately on Mintlify.

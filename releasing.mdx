@@ -3,7 +3,7 @@ title: "Release operations"
 description: "Bump versions, publish client archives through Actions, and roll back downloads."
 ---
 
-The current release is **v0.3.0**. Client releases and relay/STUN deployment are separate operations. Maintainers need repository and deployment access; users download from the Neutrino server.
+The current release is **v0.3.1**. Client releases and relay/STUN deployment are separate operations. Maintainers need repository and deployment access; users download from the Neutrino server.
 
 <Steps>
 <Step title="Choose and verify">
@@ -15,23 +15,24 @@ cargo test --workspace
 Contribution rules additionally require the all-features Clippy check before code review approval.
 </Step>
 <Step title="Bump versions together">
-For example, prepare the next minor version:
+For example, prepare the next patch after v0.3.1:
 ```bash
-sh scripts/bump-version.sh 0.3.0
+sh scripts/bump-version.sh 0.3.2
 ```
-The script updates workspace crates, desktop/Tauri configuration, and `Cargo.lock`. Review all changes.
+The script updates workspace crates, desktop/Tauri configuration, and `Cargo.lock`. Review all changes, including website release constants and documentation. Preserve historical compatibility statements: relay rendezvous requires both peers on v0.3.0 or newer, even after a release-version bump.
 </Step>
-<Step title="Commit, tag, and push">
+<Step title="Commit and push to main">
+After review, commit the version change and push `main`:
+
 ```bash
-git commit -am "chore: release v0.3.0"
-git tag v0.3.0
-git push
-git push origin v0.3.0
+git commit -am "chore: release v0.3.2"
+git push origin main
 ```
-The tag push triggers the GitHub Actions `release` workflow, which rejects a tag that does not match the Cargo version.
+
+When CI passes on `main` and the matching version tag does not exist, CI creates it and runs the release workflow automatically. A manually pushed `v*` tag also triggers release. The workflow rejects tags that do not match the Cargo version. Check the Actions runs before retrying or creating a tag manually.
 </Step>
 <Step title="Verify deployment and smoke test">
-The workflow builds `neutrino` and `neutrinod` for the five [targets](/installation), generates `SHA256SUMS`, uploads to `/var/www/neutrino-dl/v0.3.0/`, refreshes both installers, then updates `latest.txt`.
+The workflow builds `neutrino` and `neutrinod` for the five [targets](/installation), generates `SHA256SUMS`, uploads to `/var/www/neutrino-dl/v0.3.2/`, refreshes both installers, then updates `latest.txt`.
 
 Check the Actions run, reinstall on two machines, check versions, and transfer a folder. Confirm contents and verified completion on both sides. Test forced relay as well as direct connectivity when validating network changes.
 </Step>
@@ -42,13 +43,19 @@ Check the Actions run, reinstall on two machines, check versions, and transfer a
 Old version directories remain available. An authorized server operator can run this on the download server:
 
 ```bash
-printf '%s\n' v0.3.0 > /var/www/neutrino-dl/latest.txt
+printf '%s\n' v0.3.1 > /var/www/neutrino-dl/latest.txt
 ```
 
-Existing installs do not downgrade automatically. Users rerun the installer or pin `NEUTRINO_VERSION=v0.3.0`. To republish an existing tag after workflow repairs, select **Actions → release → Run workflow** with that tag.
+Existing installs do not downgrade automatically. Users rerun the installer or pin `NEUTRINO_VERSION=v0.3.1`. To republish an existing tag after workflow repairs, select **Actions → release → Run workflow** with that tag.
 
 ## Deployment access
 
 Actions uses `DEPLOY_SSH_KEY`, `DEPLOY_HOST`, and `DEPLOY_KNOWN_HOSTS`. The upload account is restricted to `/var/www/neutrino-dl`. Keep secrets in Actions secrets and pin the SSH host key.
 
 See the source checkout's `RELEASING.md` and `deploy/SERVER.md` for maintainer procedures. Relay changes must preserve compatibility with clients in the field; see [self-hosting](/self-hosting/relay).
+
+## Relay continuous deployment
+
+Client releases and relay updates are independent. In the private maintainer workflow, a push to `main` changing `bins/neutrino-relay/` builds a static binary and uploads it. CI invokes only the authorized `/usr/local/sbin/neutrino-relay-install` script through sudo. That script restarts the service and rolls back if startup fails.
+
+Relay changes must preserve the registration envelope and pairing notice for clients already in the field. The open-source relay has its own [deployment guide](/self-hosting/relay); STUN is a separate service. Inspect the current workflow definitions before operating a release, since deployment automation can change.

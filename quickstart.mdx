@@ -1,6 +1,6 @@
 ---
 title: "Quickstart"
-description: "Install v0.3.0 and transfer a file or folder between two machines."
+description: "Install v0.3.1 and transfer a file or folder between two machines."
 ---
 
 <Steps>
@@ -31,6 +31,6 @@ Accept the prompt. The folder arrives as `./downloads/my-folder`. Both CLIs auto
 </Step>
 </Steps>
 
-<Note>Neutrino tries a direct connection first, then coordinated NAT hole punching, and only then the encrypted relay. The output shows which path was used.</Note>
+<Note>Neutrino tries a direct connection first, then coordinated NAT hole punching, and only then the encrypted relay. The CLI prints `Path: direct`, `Path: direct (hole-punched)`, or `Path: relay`. Both peers need v0.3.0 or newer for relay rendezvous; install v0.3.1 for the latest connection improvements.</Note>
 
 Use `-y` to accept automatically and `--json` for a completion receipt. Receipts include the invitation; protect them as secrets. See the [CLI reference](/api-reference/cli) and [troubleshooting](/guide/troubleshooting).

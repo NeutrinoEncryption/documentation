@@ -3,20 +3,30 @@ title: "CLI reference"
 description: "Transfer commands, receipts, daemon lifecycle, and environment configuration."
 ---
 
+## Global options
+
+```bash
+neutrino [--data-dir DIR] [--daemon-bin BIN] <command>
+neutrino --help
+neutrino --version
+```
+
+`--data-dir DIR` selects daemon configuration/state. `--daemon-bin BIN` selects the executable used for automatic startup. Global options can also follow a subcommand. `-h` / `--help` prints help; `-V` / `--version` prints the top-level version. Use `neutrino <command> --help` for command-specific help.
+
 ## Transfer
 
 ```bash
-neutrino send <file-or-folder> [--max-mbps N] [--json]
-neutrino receive <code> [dir] [-y] [--json]
+neutrino send <PATH> [--chunk-size MB] [--max-mbps N] [--max-speed MBPS] [--json]
+neutrino receive <CODE> [DESTINATION] [--out DIR] [-y | --yes] [--json]
 ```
 
 | Option | Meaning |
 | --- | --- |
-| `send --max-mbps N` | Outbound limit in megabits per second |
+| `send --max-mbps N` | Outbound limit in megabits per second; takes precedence over `--max-speed` if both are set |
 | `send --max-speed N` | Alternate rate-limit option, also megabits per second |
 | `--json` | Completion receipt on stdout; invitation/progress go to stderr |
 | `receive [dir]` | Destination directory; defaults to `.` |
-| `receive --out DIR` | Output directory override |
+| `receive --out DIR` | Output directory override; takes precedence over the positional destination |
 | `receive -y`, `--yes` | Accept without interactive confirmation |
 
 `recv` and `recieve` are aliases for `receive`. Folders arrive as `dir/<name>`. The parser also accepts `send --chunk-size`, but the current send RPC does not forward that option; use default FastCDC chunking.
@@ -28,11 +38,29 @@ neutrino daemon start
 neutrino daemon start --foreground
 neutrino daemon status
 neutrino daemon stop
+neutrino daemon update [--apply]
 ```
 
-Transfer commands auto-start the daemon. Global `--data-dir DIR` selects the data directory; `--daemon-bin BIN` supplies an explicit daemon executable. The CLI also exposes `daemon update` and `--apply`; the documented release update path is to rerun the [installer](/installation).
+Transfer commands auto-start the daemon. Global `--data-dir DIR` selects the data directory; `--daemon-bin BIN` supplies an explicit daemon executable. `daemon update` checks for updates and `daemon update --apply` requests application; the documented release update path is to rerun the [installer](/installation).
 
 <Warning>The `sync`, `git`, and `tunnel` groups are in development / not yet available as complete products.</Warning>
+
+## Planned command groups
+
+These parser entries are documented for completeness. **Sync, Git over Neutrino, and Mesh networking are not yet available**; the commands below do not describe supported end-to-end workflows.
+
+| Group | Accepted syntax |
+| --- | --- |
+| Sync | `neutrino sync share <PATH> <NAME>` |
+| Sync | `neutrino sync join <CODE> <DESTINATION>` |
+| Sync | `neutrino sync status` |
+| Sync | `neutrino sync list` |
+| Sync | `neutrino sync scan [SHARE_ID]` |
+| Git over Neutrino | `neutrino git host <PATH> [--allow PUBKEY]...` (repeat `--allow` for multiple keys) |
+| Git over Neutrino | `neutrino git clone <CODE> [DESTINATION]` |
+| Mesh networking | `neutrino tunnel up <TARGET_PEER> [--virtual-ip IP]` |
+| Mesh networking | `neutrino tunnel down <INTERFACE>` |
+| Mesh networking | `neutrino tunnel status` |
 
 ## JSON receipts
 
@@ -64,11 +92,11 @@ Set variables in the daemon environment before startup. Stop an already running 
 | Variable | Behavior |
 | --- | --- |
 | `NEUTRINO_RELAY_URL` | Default `wss://neutrinoapi.peretas.live/v1/relay`; `off` disables relay |
-| `NEUTRINO_DIRECT` | `off` forces relay-only receive |
+| `NEUTRINO_DIRECT` | `off` disables receiver direct attempts and sender punching; set on both daemons to test relay-only |
 | `NEUTRINO_DATA_DIR` | Override daemon data directory |
-| `NEUTRINO_BIND_ADDR` | UDP bind address; default `0.0.0.0:0` |
-| `NEUTRINO_MAX_MBPS` | Default outbound rate limit in megabits per second |
+| `NEUTRINO_BIND_ADDR` | Parsed daemon bind setting (default `0.0.0.0:0`); current File Transfer sockets instead auto-bind dual-stack `[::]:0` with IPv4 fallback |
+| `NEUTRINO_MAX_MBPS` | Parsed daemon rate setting; the current transfer manager receives the per-send RPC limit, so use `send --max-mbps N` to enforce a limit |
 | `NEUTRINO_LOG_LEVEL` | Default `info`; `trace`, `debug`, `info`, `warn`, `error` |
-| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.3.0`; not a runtime protocol setting |
+| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.3.1`; not a runtime protocol setting |
 
 Daemon data defaults to `%LOCALAPPDATA%/neutrino` on Windows; on Unix, `$XDG_DATA_HOME/neutrino` or `~/.local/share/neutrino`. Configuration loads from `config.toml` in the selected data directory, falling back to `~/.neutrino/config.toml`; environment overrides apply afterward. Protect cookies and key material.

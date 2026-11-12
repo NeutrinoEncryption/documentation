@@ -1,10 +1,10 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Neutrino Documentation",
+  "name": "Neutrino",
   "colors": {
     "primary": "#FFC500",
-    "light": "#FFC500",
+    "light": "#FFD54D",
     "dark": "#6A00FF"
   },
   "favicon": "/favicon.svg",
@@ -16,80 +16,94 @@
   "navigation": {
     "groups": [
       {
-        "group": "Getting Started",
+        "group": "Get started",
         "pages": [
           "index",
-          "quickstart",
-          "installation"
+          "installation",
+          "quickstart"
         ]
       },
       {
-        "group": "Protocol Architecture",
+        "group": "File Transfer",
         "pages": [
-          "protocol/nwp-v2-wire",
-          "protocol/crypto-model",
-          "protocol/flow-control"
+          "guide/file-transfer",
+          "performance",
+          "privacy-security",
+          "guide/troubleshooting"
         ]
       },
       {
-        "group": "Guides & Workflows",
-        "pages": [
-          "guide/file-beam",
-          "guide/troubleshooting",
-          "guide/swarm-sync",
-          "guide/singularity-git",
-          "guide/mesh-vpn"
-        ]
-      },
-      {
-        "group": "Developer Reference",
+        "group": "Reference",
         "pages": [
           "api-reference/cli",
-          "api-reference/json-rpc"
+          "api-reference/json-rpc",
+          "changelog"
         ]
       },
       {
-        "group": "Infrastructure",
+        "group": "Self-hosting",
         "pages": [
-          "self-hosting/coordinator",
           "self-hosting/relay",
+          "self-hosting/coordinator"
+        ]
+      },
+      {
+        "group": "Planned capabilities",
+        "pages": [
+          "guide/sync",
+          "guide/git",
+          "guide/mesh"
+        ]
+      },
+      {
+        "group": "Architecture and maintenance",
+        "pages": [
+          "protocol/crypto-model",
+          "protocol/flow-control",
+          "protocol/nwp-v2-wire",
+          "spec/beta-interface",
           "releasing"
         ]
-      },
-      {
-        "group": "Implementation reference",
-        "pages": [
-          "spec/beta-interface"
-        ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "GitHub",
-          "href": "https://github.com/NeutrinoEncryption/neutrino",
-          "icon": "github"
-        }
-      ]
-    }
+    ]
   },
   "navbar": {
     "links": [
       {
-        "label": "GitHub",
-        "href": "https://github.com/NeutrinoEncryption/neutrino"
+        "label": "Neutrino",
+        "href": "https://neutrino.peretas.live"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Download CLI",
+      "label": "Download",
       "href": "https://neutrinoapi.peretas.live/dl/latest/"
     }
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/NeutrinoEncryption/neutrino"
-    }
+      "website": "https://peretas.live",
+      "github": "https://github.com/NeutrinoEncryption/documentation"
+    },
+    "links": [
+      {
+        "header": "Peretas Technologies",
+        "items": [
+          {
+            "label": "Company",
+            "href": "https://peretas.live"
+          },
+          {
+            "label": "Neutrino",
+            "href": "https://neutrino.peretas.live"
+          },
+          {
+            "label": "Open-source relay",
+            "href": "https://github.com/NeutrinoEncryption/neutrino-relay"
+          }
+        ]
+      }
+    ]
   },
   "background": {
     "color": {
@@ -108,6 +122,23 @@
     {
       "source": "/spec/BETA_INTERFACE",
       "destination": "/spec/beta-interface"
+    },
+    {
+      "source": "/guide/file-beam",
+      "destination": "/guide/file-transfer"
+    },
+    {
+      "source": "/guide/swarm-sync",
+      "destination": "/guide/sync"
+    },
+    {
+      "source": "/guide/singularity-git",
+      "destination": "/guide/git"
+    },
+    {
+      "source": "/guide/mesh-vpn",
+      "destination": "/guide/mesh"
     }
-  ]
+  ],
+  "description": "Neutrino v0.3.1 documentation by Peretas Technologies."
 }
