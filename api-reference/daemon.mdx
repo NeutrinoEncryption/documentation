@@ -1,0 +1,74 @@
+---
+title: "Daemon"
+description: "Start, stop, supervise, and diagnose the Neutrino background process."
+---
+
+`neutrinod` owns networking, encryption, disk staging, and state. The CLI and desktop app control it through authenticated local IPC. Install both binaries from the same release.
+
+## Start and stop
+
+```bash
+neutrino daemon start
+neutrino daemon status
+neutrino daemon stop
+# Run the daemon attached to a terminal:
+neutrinod
+```
+
+`neutrinod` accepts `-h` / `--help` and `-V` / `--version`. Configure it through environment and `config.toml`; it has no `--data-dir` argument. The CLI's global `--data-dir` sets `NEUTRINO_DATA_DIR` before connecting or spawning.
+
+Send, receive, status, update, and development command groups try IPC first, then spawn the sibling `neutrinod` (or `--daemon-bin BIN`) and wait up to 10 seconds for authenticated readiness. Stop only connects. Detached starts discard standard input/output/error, use a separate process group, and hide the Windows console. This is on-demand startup, not registration to run at boot.
+
+`daemon start` reports a PID and cookie path immediately after spawning. `daemon start --foreground` inherits the console, waits for readiness, then waits for child exit. Its current child-status conversion returns `1` after a successful child exit and `0` after an unsuccessful child exit; use `neutrinod` directly for service supervision.
+
+## Lifecycle and signals
+
+Startup creates the state directory and panic hook, loads configuration, loads or creates `identity.pem` and the auth cookie, creates transport/event management, checks storage, opens SQLite, then starts IPC. A failed startup stage exits with an error.
+
+Shutdown starts on `daemon.shutdown`, Ctrl+C, or Unix SIGTERM. Unix SIGHUP is ignored so closing a terminal or SSH session does not terminate the daemon. The supervisor stops accepting IPC clients and gives supervised tasks a 10-second grace period before aborting them. Finish transfers before stopping or updating; shutdown does not promise they complete.
+
+## Files and endpoint paths
+
+| Resource | Windows | Linux / macOS |
+| --- | --- | --- |
+| State | `%LOCALAPPDATA%\neutrino`, otherwise `.neutrino` in current directory | `$XDG_DATA_HOME/neutrino`, otherwise `$HOME/.local/share/neutrino`, otherwise `.neutrino` |
+| IPC | `\\.\pipe\neutrino-ipc` | `$XDG_RUNTIME_DIR/neutrino.sock`, otherwise `$HOME/.neutrino/neutrino.sock` |
+| Cookie | `%LOCALAPPDATA%\neutrino\daemon.cookie`, otherwise `%USERPROFILE%\.neutrino\daemon.cookie` | `$XDG_RUNTIME_DIR/neutrino/daemon.cookie`, otherwise `$HOME/.neutrino/daemon.cookie` |
+
+macOS follows the Unix paths here, not Application Support. State contains `identity.pem`, `config.toml` if you create it, and `sync_state.db` (even though Sync is not yet available). Transfer `.nwp.part` / `.nwp.state` files live at the chosen destination. IPC/cookie resolution fails if no supported environment path is available. See [Configuration](/api-reference/configuration) for independent overrides.
+
+The cookie is 32 random bytes represented as 64 hex characters, with owner-only permissions on Unix and restricted Windows ACLs. Possession authorizes local daemon operations. Do not share it.
+
+## Logs and diagnostics
+
+The panic hook appends redacted panic diagnostics to `<data_dir>/logs/crash.log`. Ordinary errors go to stderr; detached CLI startup discards stderr. Daily rotating logger utilities exist in the source, but startup does not install them. `NEUTRINO_LOG_LEVEL=debug` alone does not create detailed rotating logs.
+
+Stop the existing daemon, then run `neutrinod` attached to a terminal to capture startup failures. Redact invitation codes, cookies, keys, and paths before sharing output. Do not remove an endpoint while another daemon is running.
+
+## Run as a service
+
+Installers do not create an OS service. Run the daemon as the same user as the clients, with matching home, endpoint, and cookie variables and absolute executable/data paths. For Linux, a systemd **user** unit can contain:
+
+```ini
+[Unit]
+Description=Neutrino daemon
+
+[Service]
+ExecStart=%h/.local/bin/neutrinod
+Environment=NEUTRINO_DATA_DIR=%h/.local/share/neutrino
+Environment=NEUTRINO_IPC_SOCKET=%t/neutrino.sock
+Environment=NEUTRINO_COOKIE_PATH=%t/neutrino/daemon.cookie
+Restart=on-failure
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target
+```
+
+Save as `~/.config/systemd/user/neutrino.service`, then run `systemctl --user daemon-reload` and `systemctl --user enable --now neutrino`. Inspect with `journalctl --user -u neutrino`. Align client discovery with the unit's variables. Boot without login requires administrator-managed lingering.
+
+On macOS, use a per-user LaunchAgent with an absolute `ProgramArguments` path, matching environment variables, and stdout/stderr paths. On Windows, use a per-user scheduled task or an approved service wrapper. `neutrinod.exe` does not implement the native Windows Service Control Manager protocol, so `sc.exe create` alone is insufficient. Avoid simultaneous OS-managed and manually started instances.
+
+## Updates
+
+The current `daemon.update` handler is a placeholder: it reports the current version as latest and does not download or apply updates. Rerun the [installer](/installation) for a real upgrade. See [Troubleshooting](/guide/troubleshooting) for connection failures.

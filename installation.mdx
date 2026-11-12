@@ -63,6 +63,8 @@ Checksums detect corrupted downloads; they are not independent release signature
 
 ## Uninstall
 
+The installers can stop the daemon and remove their managed PATH entries. On Unix, run the downloaded script with `--uninstall`. On Windows, set `$env:NEUTRINO_UNINSTALL = '1'`, rerun the web installer, then clear that variable. Data remains unless you explicitly select purge. See [Installers](/api-reference/installers) for all flags, variables, exact purge directories, output, and rollback behavior. Manual removal is also possible as described below.
+
 Finish active transfers, then stop the daemon:
 
 ```bash

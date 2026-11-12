@@ -41,7 +41,7 @@ neutrino daemon stop
 neutrino daemon update [--apply]
 ```
 
-Transfer commands auto-start the daemon. Global `--data-dir DIR` selects the data directory; `--daemon-bin BIN` supplies an explicit daemon executable. `daemon update` checks for updates and `daemon update --apply` requests application; the documented release update path is to rerun the [installer](/installation).
+Transfer commands auto-start the daemon; `daemon status` and `daemon update` can also start it. Global `--data-dir DIR` selects state; `--daemon-bin BIN` supplies the executable. `daemon update [--apply]` is currently a placeholder that reports the installed version as latest without downloading anything. Rerun the [installer](/installation) to update. See [Daemon](/api-reference/daemon) for startup, shutdown, services, and the current foreground exit-status caveat.
 
 <Warning>The `sync`, `git`, and `tunnel` groups are in development / not yet available as complete products.</Warning>
 
@@ -83,7 +83,21 @@ Completed or failed transfer outcomes produce one receipt:
 | `root_hash` | Whole-file BLAKE3 hex on success |
 | `verified` | Whether whole-file verification passed |
 
-Exit status is `0` for success, `1` for failure, and `2` for usage errors. Cancellation or failures before a transfer outcome may produce no receipt. Check exit status plus `state` and `verified`.
+Transfer exit status is `0` for verified success, `1` for failure or cancellation, and `2` for argument-parsing errors. Help/version exit successfully. Cancellation or failures before a transfer outcome may produce no receipt. Check exit status plus `state` and `verified`. The development `git clone` path propagates the child Git status. The `daemon start --foreground` exception is documented in [Daemon](/api-reference/daemon).
+
+`total_bytes`, `elapsed_ms`, `throughput_bps`, and `chunk_count` are numbers; `verified` is boolean; all other receipt fields are strings. A failed receipt has `state: "failed"` and `verified: false`.
+
+## Output and automation
+
+The completion event prints `Path: direct`, `Path: direct (hole-punched)`, or `Path: relay` to **stderr** when the daemon supplies a path. This describes the connection used and is absent from the frozen JSON receipt. Human output also reports transferred bytes, throughput, elapsed milliseconds, root hash, and verification. Terminal progress is diagnostic output; parse the JSON receipt for automation.
+
+```bash
+neutrino send ./photos --max-mbps 100 --json > send-receipt.json
+neutrino recv neu1_REPLACE_WITH_ACTUAL_CODE --out ./downloads -y --json > receive-receipt.json
+neutrino --data-dir ./node-state --daemon-bin /absolute/path/neutrinod daemon status
+```
+
+Confirmation is automatically bypassed with `--yes`, `--json`, or non-terminal input/output. `send --chunk-size 0` fails; positive values are parsed but not forwarded. Mesh's parsed `--virtual-ip` defaults to `10.42.0.2`. `sync scan` currently queries status rather than triggering a scan; development parser entries are not supported product workflows.
 
 ## Environment variables
 
@@ -96,7 +110,9 @@ Set variables in the daemon environment before startup. Stop an already running 
 | `NEUTRINO_DATA_DIR` | Override daemon data directory |
 | `NEUTRINO_BIND_ADDR` | Parsed daemon bind setting (default `0.0.0.0:0`); current File Transfer sockets instead auto-bind dual-stack `[::]:0` with IPv4 fallback |
 | `NEUTRINO_MAX_MBPS` | Parsed daemon rate setting; the current transfer manager receives the per-send RPC limit, so use `send --max-mbps N` to enforce a limit |
-| `NEUTRINO_LOG_LEVEL` | Default `info`; `trace`, `debug`, `info`, `warn`, `error` |
+| `NEUTRINO_LOG_LEVEL` | Parsed severity, default `info`; runtime filtering is not initialized by startup |
 | `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.3.1`; not a runtime protocol setting |
 
 Daemon data defaults to `%LOCALAPPDATA%/neutrino` on Windows; on Unix, `$XDG_DATA_HOME/neutrino` or `~/.local/share/neutrino`. Configuration loads from `config.toml` in the selected data directory, falling back to `~/.neutrino/config.toml`; environment overrides apply afterward. Protect cookies and key material.
+
+See [Configuration](/api-reference/configuration) for every key and IPC/cookie override, and [Installers](/api-reference/installers) for installer variables.

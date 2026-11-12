@@ -1,0 +1,50 @@
+---
+title: "Configuration"
+description: "Every daemon key, environment override, default, and current limitation."
+---
+
+## Load order
+
+The daemon selects its state directory from `NEUTRINO_DATA_DIR`, then the [platform default](/api-reference/daemon). It reads the first existing `config.toml`: in that directory, then `~/.neutrino/config.toml` (`%USERPROFILE%\.neutrino\config.toml` on Windows). It does not merge the files. Defaults fill omitted values; environment overrides apply last.
+
+The parser supports simple key/value pairs, quoted strings, sections, and `#` comments. Unknown keys are ignored. Invalid numeric values retain defaults; worker counts must be positive. Use one alias per field: competing aliases have unspecified iteration order.
+
+## Every configuration key
+
+| Key and accepted aliases | Default | Current effect |
+| --- | --- | --- |
+| `data_dir`, `daemon.data_dir` | Platform directory | Parsed; startup already selected its directory, so use the environment or CLI `--data-dir` |
+| `bind_addr`, `network.bind_addr` | `0.0.0.0:0` | Parsed; transfers auto-bind dual-stack `[::]:0` with IPv4 fallback |
+| `max_mbps`, `network.max_mbps` | Unset | Parsed; use `send --max-mbps` for an enforced limit |
+| `log_level`, `logging.log_level`, `logging.level` | `info` | Parsed; startup does not initialize runtime log filtering |
+| `sync_db_filename`, `sync.db_filename`, `sync.database` | `sync_state.db` | SQLite filename joined to the startup directory |
+| `worker_threads`, `daemon.worker_threads`, `workers` | `4` | Parsed; runtime currently hard-codes 4 |
+| `max_blocking_threads`, `daemon.max_blocking_threads` | `32` | Parsed; runtime currently hard-codes 32 |
+
+```toml
+# config.toml: the database filename is consumed by startup today.
+[sync]
+db_filename = "sync_state.db"
+```
+
+<Note>Parsed configuration does not mean every setting controls the runtime. Restart after changes; there is no live reload.</Note>
+
+## Runtime environment
+
+| Variable | Default / meaning |
+| --- | --- |
+| `NEUTRINO_DATA_DIR` | Startup state directory; CLI `--data-dir` sets this for itself and a spawned daemon |
+| `NEUTRINO_BIND_ADDR` | Nonempty override of parsed bind setting; limitation above applies |
+| `NEUTRINO_MAX_MBPS` | Unsigned integer override of parsed rate setting; limitation above applies |
+| `NEUTRINO_LOG_LEVEL` | Nonempty override of parsed severity; limitation above applies |
+| `NEUTRINO_RELAY_URL` | `wss://neutrinoapi.peretas.live/v1/relay`; `off` disables relay |
+| `NEUTRINO_DIRECT` | Unset; `off` forces relay-only receive and disables sender punching; set on both peers |
+| `NEUTRINO_IPC_PIPE` | Windows named pipe override; checked before socket override |
+| `NEUTRINO_IPC_SOCKET` | Unix socket override |
+| `NEUTRINO_COOKIE_PATH` | Cookie override, independent of data directory |
+| `LOCALAPPDATA`, `USERPROFILE` | Windows state/cookie and fallback home locations |
+| `XDG_DATA_HOME`, `HOME` | Unix state directory and home fallback |
+| `XDG_RUNTIME_DIR` | Unix socket and cookie locations |
+| `NO_COLOR` | Disable CLI terminal colors |
+
+There are no environment overrides for worker counts or database filename. Endpoint and cookie discovery are independent of `NEUTRINO_DATA_DIR`; use matching IPC settings in clients and daemon. See [Installers](/api-reference/installers) for installer-only variables.

@@ -23,7 +23,11 @@ Check destination permissions and free space. Keep the source unchanged during t
 
 ## Collect diagnostics
 
-Finish other transfers, stop the daemon, and set `NEUTRINO_LOG_LEVEL=debug` before starting it again. Environment changes do not reconfigure an existing daemon. Record versions, platform, error text, and whether direct or relay was used. Redact invitation codes, cookies, filenames, and local paths from shared logs and receipts.
+Finish other transfers, stop the daemon, and run `neutrinod` directly in a terminal to capture stderr. Startup does not currently initialize a severity-filtered rotating logger; `NEUTRINO_LOG_LEVEL=debug` alone will not create debug logs. Panic diagnostics go to `<data_dir>/logs/crash.log`. Record versions, platform, error text, and `Path:` output. Redact invitation codes, cookies, filenames, and local paths. See [Daemon](/api-reference/daemon).
+
+## Authentication or endpoint mismatch
+
+Run clients and daemon as the same OS user. Check `NEUTRINO_IPC_PIPE`, `NEUTRINO_IPC_SOCKET`, and `NEUTRINO_COOKIE_PATH` in both environments. `--data-dir` does not relocate the cookie or IPC endpoint. Use the [exact platform paths](/api-reference/daemon), check permissions, and stop stale instances before restarting. Do not publish or casually delete the cookie.
 
 ## The path is always relay
 

@@ -1,0 +1,48 @@
+---
+title: "Desktop app"
+description: "Install, connect, transfer files, and build the native desktop interface."
+---
+
+The desktop app is a React interface in a Tauri native shell. It controls `neutrinod` through authenticated local JSON-RPC. Networking, encryption, and disk staging run in the daemon. A browser-only preview cannot control it.
+
+## Install and connect
+
+Install the desktop package supplied for your platform and keep `neutrinod` available. The [CLI installers](/installation) install only the CLI and daemon. On launch, the app connects or starts the daemon. The header shows connection status. If startup fails, choose **Reconnect and start daemon**.
+
+The launcher searches beside the desktop executable, development build locations in debug builds, then absolute PATH entries. If startup fails, install the daemon or use [CLI startup](/api-reference/daemon). Run both as the same user with matching IPC/cookie environment variables.
+
+## File Transfer
+
+1. Open **Send**. Drop one file or folder, use **Choose file** / **Choose folder**, or enter its path.
+2. Choose **Create invitation** and copy the code. Share it privately and leave the app open.
+3. On the other computer, open **Receive**, enter the entire invitation, choose a destination, and select **Receive files**.
+4. Wait for verified completion before using the received files. An invitation or an accepted receive request alone is not completion proof.
+
+The daemon supports files and folders. Use the CLI if a picker does not expose the source you need, or for scripted JSON receipts. See [File Transfer](/guide/file-transfer).
+
+## Controls and settings
+
+**Transfer activity** shows live bytes, speed, percentage, estimated time, and verification. **Cancel** becomes available once the daemon exposes the session ID through an event. Completed cards show the daemon-reported connection path and BLAKE3 root. **Show in folder** opens the chosen receive destination after verification; use an absolute destination path for this action. Errors explain invalid codes, unreachable peers, permission problems, and full disks.
+
+**Settings** offers dark/light themes, yellow/purple accents, a default download folder, and maximum sending speed in Mbps. Leave speed empty for unlimited; it applies to new sends. Preferences save automatically on this computer in local storage under `neutrino-desktop`. The advanced relay section explains that relay policy belongs to the daemon rather than a desktop toggle. See [Configuration](/api-reference/configuration).
+
+**About** shows the app version, Peretas Technologies attribution, website/docs links, and the audit warning. For daemon stop/status, use the [CLI](/api-reference/cli). Rerun the [installer](/installation) to update both binaries.
+
+Sync, Git over Neutrino, and Mesh networking appear as coming later and are **not yet available**.
+
+## Build from an authorized source checkout
+
+The application is closed source by Peretas Technologies. These commands are for maintainers with source access, not instructions to clone a public application repository. Install Node/npm, Rust, and the native Tauri prerequisites for your OS. From the repository root:
+
+```bash
+cd desktop
+npm ci
+npm run build
+cd ..
+cargo build --release -p neutrino-desktop --features custom-protocol
+cargo build --release -p neutrinod
+```
+
+Run `target/release/neutrino-desktop` (`.exe` on Windows), with the sibling daemon available. `custom-protocol` embeds the built frontend and removes the need for Vite. For frontend development, run `npm run dev` inside `desktop`; the native debug shell uses the configured Vite URL. A standalone browser has no Tauri IPC bridge.
+
+<Warning>Neutrino has not been independently security-audited. Do not use it for confidential files.</Warning>

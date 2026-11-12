@@ -1,0 +1,71 @@
+---
+title: "Installers"
+description: "Flags, environment variables, output, uninstall, and replacement rollback."
+---
+
+The shell installer supports Linux musl and macOS on x86_64/ARM64. Windows PowerShell 5.1+ installs x64 binaries (Windows ARM64 uses x64 emulation). Git Bash is rejected with directions to use PowerShell. These scripts install the CLI and daemon; desktop bundles are separate.
+
+## Shell options
+
+```bash
+curl -fsSL https://neutrinoapi.peretas.live/install.sh -o install.sh
+sh install.sh --version v0.3.1 --dir "$HOME/.local/bin" --force
+sh install.sh --uninstall
+# Destructive: also remove the fixed data directories listed below.
+sh install.sh --uninstall --purge
+```
+
+| Flag | Behavior |
+| --- | --- |
+| `--version X` | Pin release; optional `v` prefix |
+| `--dir PATH` | Default `$HOME/.local/bin`; relative paths resolve from current directory |
+| `--force` | Reinstall even if both binaries match selected version |
+| `--uninstall` | Stop daemon, remove both binaries and installer-managed shell PATH entries |
+| `--purge` | Requires uninstall; delete `$HOME/.local/share/neutrino` and `$HOME/.neutrino` |
+| `--quiet` | Suppress normal output; errors still print |
+| `--help`, `-h` | Print usage |
+
+## Environment and Windows equivalents
+
+| Variable | Default / use |
+| --- | --- |
+| `NEUTRINO_VERSION` | Latest from `NEUTRINO_DL_BASE/latest.txt` |
+| `NEUTRINO_INSTALL_DIR` | Unix `$HOME/.local/bin`; Windows `%LOCALAPPDATA%\Programs\Neutrino` |
+| `NEUTRINO_DL_BASE` | `https://neutrinoapi.peretas.live/dl` |
+| `NEUTRINO_FORCE=1` | Reinstall same version |
+| `NEUTRINO_UNINSTALL=1` | Uninstall |
+| `NEUTRINO_PURGE=1` | Delete fixed data paths; requires uninstall |
+| `NEUTRINO_QUIET=1` | Windows only; use `--quiet` on Unix |
+| `NO_COLOR` | Disable color; redirected/non-terminal output also omits color |
+
+Shell flags override environment values. The Windows web installer has no command-line parameter block: set variables before piping to `iex`.
+
+```powershell
+$env:NEUTRINO_VERSION = 'v0.3.1'
+$env:NEUTRINO_FORCE = '1'
+irm https://neutrinoapi.peretas.live/install.ps1 | iex
+```
+
+To uninstall Windows binaries and the installer-added user PATH entry:
+
+```powershell
+$env:NEUTRINO_UNINSTALL = '1'
+irm https://neutrinoapi.peretas.live/install.ps1 | iex
+Remove-Item Env:NEUTRINO_UNINSTALL
+```
+
+Set `NEUTRINO_PURGE=1` as well only to delete `%APPDATA%\neutrino`, `%LOCALAPPDATA%\neutrino`, `$HOME\.neutrino`, and `$HOME\.local\share\neutrino`. Purge does not discover custom `NEUTRINO_DATA_DIR`, XDG data paths, or custom cookie paths. Inspect those manually. Received files elsewhere remain intact. Clear installer variables afterward so later invocations do not repeat uninstall/purge.
+
+## Output and PATH
+
+Normal installation prints `neutrino / secure file transfer`, then five stages: detecting platform, downloading version/size, verifying checksum, installing, and done with version/directory. It prints send/receive examples, the documentation URL, and the not-audited warning. Already-current installs report no reinstall needed; updates and reinstalls identify versions. Progress depends on terminal support and quiet mode.
+
+Unix adds marked PATH lines to `.profile` and existing `.bashrc` / `.zshrc` when needed. Windows adds a user PATH entry and records ownership in `.neutrino-path-added`. Open a new terminal afterward. Uninstall removes installer-managed entries. Errors describe network, checksum, permissions, disk-space, or daemon-stop problems.
+
+## Replacement and rollback
+
+The installer downloads the versioned archive and `SHA256SUMS`, verifies SHA-256, extracts both binaries, and stages replacement on the destination filesystem. It stops the old daemon before replacement. Windows waits up to 15 seconds and may kill a lingering matching process; Unix waits up to 15 seconds and fails if it remains running (`pgrep` is required).
+
+A failure during replacement restores prior binaries or removes newly created ones. Recovery copies remain if restoration fails. Rollback covers binary replacement, not every later PATH change or uninstall. The daemon is not restarted automatically. A checksum mismatch preserves the prior installation. Same-server checksums detect corruption, not independent release authenticity.
+
+<Warning>Neutrino has not been independently security-audited. Do not use it for confidential files.</Warning>

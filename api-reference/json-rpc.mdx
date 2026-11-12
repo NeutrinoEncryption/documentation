@@ -20,7 +20,9 @@ Authenticate through `auth.verify` using the daemon's 256-bit cookie encoded as 
 }
 ```
 
-The result includes `authenticated` and `version`. Endpoint and cookie selection depend on platform and overrides; use library discovery helpers instead of hard-coding paths.
+The result includes `authenticated` (boolean) and `version` (string). Authenticate each connection within 5 seconds. Invalid credentials or a non-auth call before authentication can close the connection. Compatibility aliases are method `auth` and parameter `cookie`; prefer `auth.verify` with `token`. See [Daemon](/api-reference/daemon) for exact endpoint/cookie paths and [Configuration](/api-reference/configuration) for overrides.
+
+Frames must contain 1 through 16,777,216 payload bytes. Batch arrays must contain **1–100 requests**; empty or larger batches return invalid request. Authenticate before batching application calls. Requests use string or integer IDs; notifications omit the ID and receive no ordinary response. Match responses by ID, not arrival order.
 
 ## Methods
 
@@ -28,6 +30,7 @@ The result includes `authenticated` and `version`. Endpoint and cookie selection
 | --- | --- | --- |
 | `daemon.status` | `{}` | `version`, `uptime_seconds`, `active_transfers`, `connected_peers`, `sync_shares` |
 | `daemon.shutdown` | `{}` | `shutting_down` |
+| `daemon.update` | optional `apply` boolean, default false | `current_version`, `latest_version`, `update_available`, nullable `release_url`, `message` |
 | `transfer.send` | `path`, optional `max_mbps` | `session_code`, `total_bytes`, `chunk_count` |
 | `transfer.receive` | `session_code`, `destination` | `session_id`, `accepted` |
 | `transfer.status` | `session_id` | `session_id`, `bytes_transferred`, `total_bytes`, `speed_bps`, `progress_percent`, `state` |
@@ -46,7 +49,65 @@ A send response provides an invitation, not completion proof. Receiver `accepted
 
 ## Events
 
-Call `subscribe` with a `topics` list (for example `["transfer"]` or `["*"]`). The result includes `subscription_id` and `subscribed`. Call `unsubscribe` with that `subscription_id`; its result includes `unsubscribed`. Event methods include `transfer.progress`, `transfer.completed`, and `transfer.failed`. Events identify transfers by `session_id`; the CLI receipt is a separate schema. Authoritative typed schemas live in `crates/neutrino-ipc/src/protocol/methods.rs` and `events.rs` in the source checkout.
+Call `subscribe` with a `topics` array of exact topic names or `["*"]`. Prefixes such as `"transfer"` do not match `"transfer.progress"`. The result includes numeric `subscription_id` and string-array `subscribed`. Call `unsubscribe` with that ID; its result includes boolean `unsubscribed`. Subscriptions are connection-scoped.
+
+Events arrive as JSON-RPC notifications with method `subscription.event`, not the topic name. Parameters contain `subscription_id`, `topic`, and `data`. Typed daemon `data` is an object with `type` and `payload`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "subscription.event",
+  "params": {
+    "subscription_id": 1,
+    "topic": "transfer.completed",
+    "data": {
+      "type": "TransferCompleted",
+      "payload": {
+        "session_id": "SESSION_ID",
+        "root_hash": "BLAKE3_HEX",
+        "total_bytes": 1024,
+        "duration_ms": 500,
+        "path": "direct"
+      }
+    }
+  }
+}
+```
+
+| Topic / data type | Payload fields |
+| --- | --- |
+| `transfer.progress` / `TransferProgress` | `session_id`, `bytes_transferred`, `total_bytes`, `speed_bps`, nullable `eta_seconds`, `percentage` |
+| `transfer.completed` / `TransferCompleted` | `session_id`, `root_hash`, `total_bytes`, `duration_ms`, optional `path` (`direct`, `direct (hole-punched)`, `relay`) |
+| `transfer.failed` / `TransferFailed` | `session_id`, `error` |
+| `sync.conflict` / `SyncConflict` | `share_id`, `path`, `conflict_path`, `local_timestamp`, `remote_timestamp` |
+| `peer.connected` / `PeerConnected` | `peer_id`, `endpoint`, `direct` |
+| `peer.disconnected` / `PeerDisconnected` | `peer_id`, `reason` |
+
+Byte counts, durations, and speeds are unsigned numbers; progress percentages are floating-point numbers; paths, IDs, hashes, and errors are strings. Event schema presence does not guarantee every topic is emitted in every workflow. The CLI receipt is a separate schema. Events are not a durable replay log; reconnect, authenticate, resubscribe, and query status after disconnection.
+
+## Development methods
+
+These interfaces exist in the current protocol/router but **Sync, Git over Neutrino, and Mesh networking are not yet available** as supported products.
+
+| Method | Parameters | Result |
+| --- | --- | --- |
+| `sync.share` | `path`, `name` | `share_id`, `root_hash` |
+| `sync.join` | `code`, `destination` | `share_id`, `status` |
+| `sync.status` | optional `share_id` | `shares`: array of `share_id`, `name`, `path`, `peer_count`, `file_count`, `root_hash` |
+| `git.host` | `path`, `push_allowed` string array | `code` |
+| `git.list` | `url`, `for_push` boolean | `refs`: array of `sha`, `ref_name`, optional `symref_target` |
+| `git.fetch` | `url`, `refs` array of `sha`/`ref_name`, optional `target_path` | `success`, optional `message` |
+| `git.push` | `url`, `specs` array of `src`/`dst`/`force`, optional `source_path`, `peer_pubkey`, `challenge`, `signature` | `results`: array of `ref_name`, `ok`, optional `error` |
+| `tunnel.up` | `target_peer`, `virtual_ip` | `interface` |
+| `tunnel.down` | `interface` | `stopped` boolean |
+
+`challenge` contains `challenge_nonce` (32 byte-valued numbers), `repo_name`, and `timestamp_secs`. The daemon currently requires an existing `target_path` for fetch and a local `source_path` for push; these handlers do not establish released peer replication. `daemon.status.connected_peers` currently counts tracked tunnel entries, not all transfer peers. `daemon.update` reports the installed version as latest without checking or applying an online update; use the installer.
+
+## Errors and result types
+
+Responses contain `result` or `error`. Error objects contain numeric `code`, string `message`, and optional `data`. Standard codes are `-32700` parse error, `-32600` invalid request, `-32601` unknown method, `-32602` invalid parameters, and `-32603` internal error. Domain codes define `-32000` unauthorized, `-32001` authentication failed, `-32002` busy, `-32003` transfer error, `-32004` sync error, `-32005` subscription error, and `-32006` resource missing. Current handlers often map operational failures to internal error; do not assume every failure gets a more specific domain code.
+
+For active methods, IDs/paths/state/version/hash values are strings, counts/timing/rates are unsigned numbers, `progress_percent` is floating point, and acceptance/shutdown/cancellation/update flags are booleans. `max_mbps` is an optional unsigned 32-bit integer. Completion is event-driven: neither send registration nor receive acceptance proves verification.
 
 <Warning>Sync, Git, and tunnel interfaces remain in development; registered method names do not promise working released workflows.</Warning>
 

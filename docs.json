@@ -3,15 +3,15 @@
   "theme": "mint",
   "name": "Neutrino",
   "colors": {
-    "primary": "#FFC500",
-    "light": "#FFD54D",
-    "dark": "#6A00FF"
+    "primary": "#6B5100",
+    "light": "#FFC500",
+    "dark": "#8D52FF"
   },
   "favicon": "/favicon.svg",
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "/"
+    "href": "https://neutrino.peretas.live"
   },
   "navigation": {
     "groups": [
@@ -24,20 +24,31 @@
         ]
       },
       {
-        "group": "File Transfer",
+        "group": "Using Neutrino",
         "pages": [
           "guide/file-transfer",
-          "performance",
-          "privacy-security",
-          "guide/troubleshooting"
+          "guide/desktop",
+          "api-reference/cli",
+          "guide/troubleshooting",
+          "performance"
         ]
       },
       {
         "group": "Reference",
         "pages": [
-          "api-reference/cli",
+          "api-reference/daemon",
+          "api-reference/configuration",
           "api-reference/json-rpc",
-          "changelog"
+          "api-reference/installers"
+        ]
+      },
+      {
+        "group": "Security",
+        "pages": [
+          "privacy-security",
+          "protocol/crypto-model",
+          "protocol/nwp-v2-wire",
+          "protocol/flow-control"
         ]
       },
       {
@@ -48,21 +59,11 @@
         ]
       },
       {
-        "group": "Planned capabilities",
+        "group": "Project",
         "pages": [
-          "guide/sync",
-          "guide/git",
-          "guide/mesh"
-        ]
-      },
-      {
-        "group": "Architecture and maintenance",
-        "pages": [
-          "protocol/crypto-model",
-          "protocol/flow-control",
-          "protocol/nwp-v2-wire",
-          "spec/beta-interface",
-          "releasing"
+          "changelog",
+          "releasing",
+          "guide/roadmap"
         ]
       }
     ]
@@ -138,6 +139,26 @@
     {
       "source": "/guide/mesh-vpn",
       "destination": "/guide/mesh"
+    },
+    {
+      "source": "/daemon",
+      "destination": "/api-reference/daemon"
+    },
+    {
+      "source": "/configuration",
+      "destination": "/api-reference/configuration"
+    },
+    {
+      "source": "/installers",
+      "destination": "/api-reference/installers"
+    },
+    {
+      "source": "/desktop",
+      "destination": "/guide/desktop"
+    },
+    {
+      "source": "/roadmap",
+      "destination": "/guide/roadmap"
     }
   ],
   "description": "Neutrino v0.3.1 documentation by Peretas Technologies."
