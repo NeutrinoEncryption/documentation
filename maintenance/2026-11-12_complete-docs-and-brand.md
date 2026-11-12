@@ -42,7 +42,16 @@ References distinguish parser schemas from actual runtime wiring: worker counts,
 - `npx mint a11y`: all colors PASS; all 25 MDX files have image/video alt attributes. Gold #6B5100 on white 7.49:1; yellow #FFC500 on dark 12.33:1; purple #8D52FF on dark/light 4.46:1 / 4.39:1.
 - `git diff --check -- docs`: passed.
 - `git pull --rebase` in parent and public clone: already up to date before edits.
-- Live deployed logo verification follows publication; screenshots reported to task owner.
+- `node maintenance/check-live.cjs`: launched headless Edge against the deployed custom domain. Confirmed Introduction, new Mintlify asset revision `-kN1f3M2nR66MN3N`, loaded light/dark logo images, and website href. Actual navbar dark logo renders 28px high; light asset 32px. Saved and visually inspected `maintenance/live-dark.png` and `maintenance/live-light.png`; raw loaded-image details in `maintenance/live-verification.json`.
+- Public tracked files and docs source have identical path sets and byte contents (Python comparison).
+- Final desktop guide synchronized with the newly rewritten desktop/README.md: native build/package commands, Windows daemon resources, four screens/settings, and honest activity/cancellation limits.
+
+## Additional file ledger
+
+* `docs/maintenance/check-live.cjs`: Lines 1–end; reproducible live deployment check and two-theme screenshot capture with isolated headless Edge. Uses temporary browser state, no credentials.
+* `docs/maintenance/live-dark.png`: Binary; deployed dark-theme screenshot, 1440×900.
+* `docs/maintenance/live-light.png`: Binary; deployed light-theme screenshot, 1440×900.
+* `docs/maintenance/live-verification.json`: Lines 1–end; deployed logo URLs, loaded state, dimensions, and href.
 
 ## Review
 Implementation sub-agent performed a source-to-doc audit against config/main/router/CLI/receipt/IPC/installer/desktop code. No nested agents were started. No Rust code changes require a Clippy run. Scope review: only docs/ is staged in parent, and matching content in the public clone.

@@ -7,7 +7,7 @@ The desktop app is a React interface in a Tauri native shell. It controls `neutr
 
 ## Install and connect
 
-Install the desktop package supplied for your platform and keep `neutrinod` available. The [CLI installers](/installation) install only the CLI and daemon. On launch, the app connects or starts the daemon. The header shows connection status. If startup fails, choose **Reconnect and start daemon**.
+Install the desktop package supplied for your platform. Windows releases bundle the daemon resource; on other platforms keep `neutrinod` beside the app or on PATH. The [CLI installers](/installation) install only the CLI and daemon. On launch, the app connects or starts the daemon. The header shows connection status. If startup fails, choose **Reconnect and start daemon**.
 
 The launcher searches beside the desktop executable, development build locations in debug builds, then absolute PATH entries. If startup fails, install the daemon or use [CLI startup](/api-reference/daemon). Run both as the same user with matching IPC/cookie environment variables.
 
@@ -28,21 +28,27 @@ The daemon supports files and folders. Use the CLI if a picker does not expose t
 
 **About** shows the app version, Peretas Technologies attribution, website/docs links, and the audit warning. For daemon stop/status, use the [CLI](/api-reference/cli). Rerun the [installer](/installation) to update both binaries.
 
+Activity is session-local, not persistent history. Transfers completed before the app connects cannot be recovered from status alone: completed sessions disappear and status has no completion hash. Verification is shown only from a real completion event. The receive folder action opens the selected directory because IPC does not supply the final collision-renamed filename. A waiting outbound invitation cannot be cancelled until the daemon emits a session ID; this is a current API limitation.
+
 Sync, Git over Neutrino, and Mesh networking appear as coming later and are **not yet available**.
 
 ## Build from an authorized source checkout
 
-The application is closed source by Peretas Technologies. These commands are for maintainers with source access, not instructions to clone a public application repository. Install Node/npm, Rust, and the native Tauri prerequisites for your OS. From the repository root:
+The application is closed source by Peretas Technologies. These commands are for maintainers with source access, not instructions to clone a public application repository. Install Node 22+, npm, Rust stable, and native Tauri prerequisites: MSVC tools/WebView2 on Windows, WebKitGTK on Linux, or Xcode tools on macOS. From the repository root:
 
 ```bash
+cargo build --release -p neutrinod -p neutrino
 cd desktop
 npm ci
+npx tsc --noEmit
 npm run build
-cd ..
-cargo build --release -p neutrino-desktop --features custom-protocol
-cargo build --release -p neutrinod
+npm run tauri dev
+# Build executable and installer bundles:
+npm run tauri build
 ```
 
-Run `target/release/neutrino-desktop` (`.exe` on Windows), with the sibling daemon available. `custom-protocol` embeds the built frontend and removes the need for Vite. For frontend development, run `npm run dev` inside `desktop`; the native debug shell uses the configured Vite URL. A standalone browser has no Tauri IPC bridge.
+Frontend output is `desktop/dist/`; executable and installer output is under `target/release/` and `target/release/bundle/`. Windows packaging requires the prebuilt `target/release/neutrinod.exe`. The standalone `cargo build --release -p neutrino-desktop --features custom-protocol` path embeds the already-built frontend. For frontend-only development, run `npm run dev` inside `desktop`; a standalone browser has no Tauri IPC bridge.
+
+These instructions and limitations were synchronized with the current `desktop/README.md`. Native loopback QA covers real file/folder transfers and cancellation, but does not establish real Internet/NAT coverage, full-disk fault injection, or manual picker/drag-and-drop behavior.
 
 <Warning>Neutrino has not been independently security-audited. Do not use it for confidential files.</Warning>
