@@ -33,7 +33,7 @@ Run clients and daemon as the same OS user. Check `NEUTRINO_IPC_PIPE`, `NEUTRINO
 
 A relay path is normal when NAT or a firewall prevents direct QUIC. Permit outbound UDP if your network policy allows it; no manual port forwarding is required. IPv6 may bypass IPv4 CGNAT when both endpoints have reachable IPv6. Port prediction cannot guarantee a path through symmetric NAT or strict corporate firewalls.
 
-Check that `NEUTRINO_DIRECT` is unset. Use v0.3.1 on both peers for dual-stack support and more persistent punching. Relay rendezvous itself requires v0.3.0 or newer on both peers.
+Check that `NEUTRINO_DIRECT` is unset. Use v0.4.0 on both peers for dual-stack support and more persistent punching. Relay rendezvous itself requires v0.3.0 or newer on both peers.
 
 ## Slow transfer
 

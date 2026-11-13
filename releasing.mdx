@@ -3,7 +3,7 @@ title: "Release operations"
 description: "Bump versions, publish client archives through Actions, and roll back downloads."
 ---
 
-The current release is **v0.3.1**. Client releases and relay/STUN deployment are separate operations. Maintainers need repository and deployment access; users download from the Neutrino server.
+The current release is **v0.4.0**. Client releases and relay/STUN deployment are separate operations. Maintainers need repository and deployment access; users download from the Neutrino server.
 
 <Steps>
 <Step title="Choose and verify">
@@ -15,7 +15,7 @@ cargo test --workspace
 Contribution rules additionally require the all-features Clippy check before code review approval.
 </Step>
 <Step title="Bump versions together">
-For example, prepare the next patch after v0.3.1:
+For example, prepare the next patch after v0.4.0:
 ```bash
 sh scripts/bump-version.sh 0.3.2
 ```
@@ -43,10 +43,10 @@ Check the Actions run, reinstall on two machines, check versions, and transfer a
 Old version directories remain available. An authorized server operator can run this on the download server:
 
 ```bash
-printf '%s\n' v0.3.1 > /var/www/neutrino-dl/latest.txt
+printf '%s\n' v0.4.0 > /var/www/neutrino-dl/latest.txt
 ```
 
-Existing installs do not downgrade automatically. Users rerun the installer or pin `NEUTRINO_VERSION=v0.3.1`. To republish an existing tag after workflow repairs, select **Actions → release → Run workflow** with that tag.
+Existing installs do not downgrade automatically. Users rerun the installer or pin `NEUTRINO_VERSION=v0.4.0`. To republish an existing tag after workflow repairs, select **Actions → release → Run workflow** with that tag.
 
 ## Deployment access
 

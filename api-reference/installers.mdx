@@ -9,7 +9,7 @@ The shell installer supports Linux musl and macOS on x86_64/ARM64. Windows Power
 
 ```bash
 curl -fsSL https://neutrinoapi.peretas.live/install.sh -o install.sh
-sh install.sh --version v0.3.1 --dir "$HOME/.local/bin" --force
+sh install.sh --version v0.4.0 --dir "$HOME/.local/bin" --force
 sh install.sh --uninstall
 # Destructive: also remove the fixed data directories listed below.
 sh install.sh --uninstall --purge
@@ -41,7 +41,7 @@ sh install.sh --uninstall --purge
 Shell flags override environment values. The Windows web installer has no command-line parameter block: set variables before piping to `iex`.
 
 ```powershell
-$env:NEUTRINO_VERSION = 'v0.3.1'
+$env:NEUTRINO_VERSION = 'v0.4.0'
 $env:NEUTRINO_FORCE = '1'
 irm https://neutrinoapi.peretas.live/install.ps1 | iex
 ```

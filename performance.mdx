@@ -33,7 +33,7 @@ Both peers completed BLAKE3 verification and receiver output matched the source 
 
 MB/s is decimal megabytes per second; Mbit/s is megabits per second (eight bits per byte). CLI rate-limit options use **megabits per second**, not MB/s.
 
-The v0.3.1 QUIC stream receive and send budgets are 16 MiB, alongside the authenticated 16 MiB application window. The larger windows remove a calculated flow-control ceiling on fast, high-latency links. These tests do not demonstrate a measured high-latency speed improvement, native IPv6 internet performance, or reliable predicted-port traversal of symmetric NAT/CGNAT.
+The v0.4.0 QUIC stream receive and send budgets are 16 MiB, alongside the authenticated 16 MiB application window. The larger windows remove a calculated flow-control ceiling on fast, high-latency links. These tests do not demonstrate a measured high-latency speed improvement, native IPv6 internet performance, or reliable predicted-port traversal of symmetric NAT/CGNAT.
 
 ## Investigate slow transfers
 

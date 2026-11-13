@@ -111,7 +111,7 @@ Set variables in the daemon environment before startup. Stop an already running 
 | `NEUTRINO_BIND_ADDR` | Parsed daemon bind setting (default `0.0.0.0:0`); current File Transfer sockets instead auto-bind dual-stack `[::]:0` with IPv4 fallback |
 | `NEUTRINO_MAX_MBPS` | Parsed daemon rate setting; the current transfer manager receives the per-send RPC limit, so use `send --max-mbps N` to enforce a limit |
 | `NEUTRINO_LOG_LEVEL` | Parsed severity, default `info`; runtime filtering is not initialized by startup |
-| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.3.1`; not a runtime protocol setting |
+| `NEUTRINO_VERSION` | Installer release pin, e.g. `v0.4.0`; not a runtime protocol setting |
 
 Daemon data defaults to `%LOCALAPPDATA%/neutrino` on Windows; on Unix, `$XDG_DATA_HOME/neutrino` or `~/.local/share/neutrino`. Configuration loads from `config.toml` in the selected data directory, falling back to `~/.neutrino/config.toml`; environment overrides apply afterward. Protect cookies and key material.
 

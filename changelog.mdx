@@ -5,6 +5,16 @@ description: "Release notes for Neutrino, newest first."
 
 Release notes mirror the Neutrino website. [Install or update](/installation) to use the latest release.
 
+<Update label="v0.4.0" description="NAT typing, birthday hole punching and background relay upgrades">
+
+- Dual-STUN NAT typing (F4): Classifies local NAT mapping (Easy/Hard/Unknown) on the active transfer socket and exchanges classes via versioned candidate frames.
+- Birthday paradox hole punching (F4): Traverses endpoint-dependent ("symmetric") NATs against endpoint-independent peers with session-bound preamble verification.
+- Background relay-to-direct upgrade (F5): Relayed transfers dynamically probe for direct connectivity in the background and switch cleanly at chunk boundaries with bit-identical verification.
+- Desktop transfer UI overhaul: Full daemon transport controls (Auto, Direct only, Relay only), native OS file and folder pickers, live route indicators, and independent window scrolling.
+- Hardened UDP relay protocol (v2): Stateless return-path cookies, per-IP group quotas, single-use rebind secrets, and anti-spoofing guarantees.
+
+</Update>
+
 <Update label="v0.3.1" description="Fewer relayed transfers">
 
 - IPv6 direct connections, which reach many mobile and carrier-grade NAT networks without the relay.
