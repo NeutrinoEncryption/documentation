@@ -16,20 +16,39 @@ neutrino --version
 ## Transfer
 
 ```bash
-neutrino send <PATH> [--chunk-size MB] [--max-mbps N] [--max-speed MBPS] [--json]
-neutrino receive <CODE> [DESTINATION] [--out DIR] [-y | --yes] [--json]
+neutrino send <PATH> [--max-mbps N] [--transport auto|direct|relay] [--json]
+neutrino receive <CODE> [DESTINATION] [--out DIR] [-y | --yes] [--transport auto|direct|relay] [--json]
 ```
 
 | Option | Meaning |
 | --- | --- |
 | `send --max-mbps N` | Outbound limit in megabits per second; takes precedence over `--max-speed` if both are set |
 | `send --max-speed N` | Alternate rate-limit option, also megabits per second |
+| `--transport MODE` | Connection mode for this transfer only: `auto`, `direct` or `relay`. Overrides your saved mode (see [Connection modes](#connection-modes)) |
 | `--json` | Completion receipt on stdout; invitation/progress go to stderr |
 | `receive [dir]` | Destination directory; defaults to `.` |
 | `receive --out DIR` | Output directory override; takes precedence over the positional destination |
 | `receive -y`, `--yes` | Accept without interactive confirmation |
 
-`recv` and `recieve` are aliases for `receive`. Folders arrive as `dir/<name>`. The parser also accepts `send --chunk-size`, but the current send RPC does not forward that option; use default FastCDC chunking.
+`recv` and `recieve` are aliases for `receive`. Folders arrive as `dir/<name>`. While a transfer runs, Neutrino prints which path it is using: `direct`, `direct (hole-punched)`, `direct (upgraded from relay)` or `relay`.
+
+## Connection modes
+
+```bash
+neutrino transport                     # show the modes, their advantages and risks
+neutrino transport set auto|direct|relay
+neutrino stats                         # how often your transfers connect directly
+```
+
+| Mode | What it does |
+| --- | --- |
+| **Auto** (recommended) | Connects directly whenever possible and uses the encrypted relay only when it has to. A relayed transfer moves to a direct path mid-way if one opens up. |
+| **Direct only** | Never sends data through a relay. Fails on networks that block direct connections, such as some mobile carriers and strict offices. |
+| **Relay only** | Always uses the encrypted relay over port 443. Hides your IP address from the other person. Slower. |
+
+The descriptions, advantages and risks shown by `neutrino transport` come from the background service, so the CLI and the desktop app always show the same text. The saved mode applies to new transfers; `--transport` overrides it for one transfer. The environment variable `NEUTRINO_DIRECT=off` forces relay-only, and `NEUTRINO_RELAY_URL` points Neutrino at a different relay (`off` disables the relay).
+
+`neutrino transport region <id|auto>` is reserved for multiple relay regions; today there is one relay, so `auto` is the only useful value. Router port mapping (UPnP / NAT-PMP / PCP) is **not available yet**.
 
 ## Daemon
 
@@ -41,7 +60,11 @@ neutrino daemon stop
 neutrino daemon update [--apply]
 ```
 
-Transfer commands auto-start the daemon; `daemon status` and `daemon update` can also start it. Global `--data-dir DIR` selects state; `--daemon-bin BIN` supplies the executable. `daemon update [--apply]` is currently a placeholder that reports the installed version as latest without downloading anything. Rerun the [installer](/installation) to update. See [Daemon](/api-reference/daemon) for startup, shutdown, services, and the current foreground exit-status caveat.
+Transfer commands auto-start the daemon; `daemon status` and `daemon update` can also start it. Global `--data-dir DIR` selects state; `--daemon-bin BIN` supplies the executable. See [Daemon](/api-reference/daemon) for startup, shutdown and services.
+
+### Updating
+
+`neutrino daemon update` checks the download server for a newer version. `neutrino daemon update --apply` installs it. It downloads the archive for your platform, checks the release signature and the SHA-256 checksum, replaces `neutrino` and `neutrinod`, and restarts the background service. It refuses to update while a transfer is running. The background service also checks for updates at most once a day, and the CLI then shows a short notice. Rerunning the [installer](/installation) works too.
 
 <Warning>The `sync`, `git`, and `tunnel` groups are in development / not yet available as complete products.</Warning>
 

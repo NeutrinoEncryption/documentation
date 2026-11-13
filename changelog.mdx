@@ -5,13 +5,14 @@ description: "Release notes for Neutrino, newest first."
 
 Release notes mirror the Neutrino website. [Install or update](/installation) to use the latest release.
 
-<Update label="v0.4.0" description="NAT typing, birthday hole punching and background relay upgrades">
+<Update label="v0.4.0" description="Choose how you connect">
 
-- Dual-STUN NAT typing (F4): Classifies local NAT mapping (Easy/Hard/Unknown) on the active transfer socket and exchanges classes via versioned candidate frames.
-- Birthday paradox hole punching (F4): Traverses endpoint-dependent ("symmetric") NATs against endpoint-independent peers with session-bound preamble verification.
-- Background relay-to-direct upgrade (F5): Relayed transfers dynamically probe for direct connectivity in the background and switch cleanly at chunk boundaries with bit-identical verification.
-- Desktop transfer UI overhaul: Full daemon transport controls (Auto, Direct only, Relay only), native OS file and folder pickers, live route indicators, and independent window scrolling.
-- Hardened UDP relay protocol (v2): Stateless return-path cookies, per-IP group quotas, single-use rebind secrets, and anti-spoofing guarantees.
+- **Pick a connection mode.** *Auto* (recommended), *Direct only* or *Relay only*, each with its trade-offs explained. Run `neutrino transport`, use `--transport` on a single transfer, or open **Settings** in the desktop app.
+- **Fewer transfers through the relay.** Neutrino now works out what kind of router each side is behind and picks the punching strategy to match, including a new technique for the hardest home routers.
+- **Relayed transfers switch to direct mid-way.** If a direct path opens up while a transfer is going through the relay, Neutrino moves to it without restarting. Every byte is still verified.
+- **See your connection path live.** The desktop app and CLI show whether a transfer is direct, hole-punched or relayed while it runs. `neutrino stats` shows how often your transfers connect directly.
+- **Desktop app redesign.** Native file and folder pickers, cancel at any time, and clearer wording throughout.
+- **A tougher relay server.** It now checks every sender's address before relaying anything, and limits how much any one address can use.
 
 </Update>
 

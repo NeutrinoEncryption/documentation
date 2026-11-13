@@ -25,29 +25,42 @@ The receiver races QUIC connections to the invitation's candidates for about **t
 If the first attempt fails, both peers rendezvous at the relay using a locally derived, hashed ticket. The receiver sends its own IPv4 and IPv6 candidates through the paired channel. The raw invitation secret is never registered with the relay.
 </Step>
 <Step title="Try coordinated hole punching">
-Both sides fire QUIC handshakes for about **eight seconds**. The sender re-fires roughly every second while concurrently accepting incoming connections. Both sides try the original ports plus predicted ports **±1–3** around public IPv4 mappings. Prediction is bounded and cannot overcome every NAT or firewall.
+Each side asks two STUN servers for its public address to learn what kind of router it is behind: *easy* (keeps the same public port for every destination) or *hard* (changes it). The two sides exchange this along with their candidates and pick a strategy:
+
+- **Easy and easy:** both sides fire QUIC handshakes for about **eight seconds**, re-firing roughly every second and trying predicted ports **±1–3**.
+- **Easy and hard:** a bounded *birthday* punch. The easy side opens a limited set of sockets and the hard side probes random ports, so the two meet with high probability within the time limit.
+- **Hard and hard:** punching almost never works, so Neutrino goes straight to the relay to save time.
+
+These attempts are bounded in sockets, packets and time, and cannot overcome every NAT or firewall.
 
 The receiver sends a decision byte: `D` selects the punched direct connection; `R` retains the relay. A successful punched connection carries the file directly between peers.
 </Step>
 <Step title="Use the relay only as a last resort">
-If punching fails, the already-paired relay carries the end-to-end encrypted stream. There is no automatic migration to a direct path once relay data transfer has begun.
+If punching fails, the already-paired relay carries the end-to-end encrypted stream. In **Auto** mode Neutrino keeps trying to find a direct path in the background. If one opens up, the transfer moves to it at a chunk boundary without restarting or losing data, and the path changes to `direct (upgraded from relay)`.
 </Step>
 <Step title="Verify and commit">
 A token-authenticated X25519 + ML-KEM-768 exchange establishes session keys. Frames are protected with XChaCha20-Poly1305. Each FastCDC chunk and the whole-file BLAKE3 root are verified before commit from hidden `.nwp.part` staging. The sender reports success only after the receiver acknowledges the verified commit.
 </Step>
 </Steps>
 
-Both peers need **v0.3.0 or newer** for the relay rendezvous protocol (relay ticket context v2). The v0.4.0 dual-stack and punching improvements retain that compatibility. Use the latest release on both computers for best results.
+Both peers need **v0.3.0 or newer** for the relay rendezvous protocol (relay ticket context v2). Router typing, birthday punching and background upgrades need **v0.4.0 or newer on both computers**; with an older peer, Neutrino falls back to the v0.3 behaviour. Use the latest release on both computers for best results.
+
+## Choose a connection mode
+
+**Auto** (the default) uses all of the steps above. **Direct only** never sends data through a relay and fails if no direct path exists. **Relay only** always uses the relay, which keeps your IP address hidden from the other person but is slower. Change the mode with `neutrino transport set <auto|direct|relay>`, for a single transfer with `--transport`, or in the desktop app's **Settings**. See [Connection modes](/api-reference/cli#connection-modes) for the full trade-offs.
 
 ## Read the path
 
-The CLI prints one of these completion lines:
+The CLI and the desktop app show the path while the transfer runs, and the CLI prints it on completion:
 
 ```text
 Path: direct
 Path: direct (hole-punched)
+Path: direct (upgraded from relay)
 Path: relay
 ```
+
+`neutrino stats` shows how often your transfers connected directly.
 
 A hole-punched path uses the relay for coordination, then sends file data directly. A relay path is expected on restrictive networks; it still encrypts the file end to end. Discovery and rendezvous add time beyond the two-second and eight-second attempt windows.
 

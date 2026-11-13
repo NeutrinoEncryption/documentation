@@ -22,13 +22,15 @@ The daemon supports files and folders. Use the CLI if a picker does not expose t
 
 ## Controls and settings
 
-**Transfer activity** shows live bytes, speed, percentage, estimated time, and verification. **Cancel** becomes available once the daemon exposes the session ID through an event. Completed cards show the daemon-reported connection path and BLAKE3 root. **Show in folder** opens the chosen receive destination after verification; use an absolute destination path for this action. Errors explain invalid codes, unreachable peers, permission problems, and full disks.
+**Transfer activity** shows live bytes, speed, percentage, estimated time, the connection path (for example *Direct* or *Relay*) as it changes, and verification. **Cancel** is available as soon as a transfer starts, including while you wait for the receiver. Completed cards show the connection path and BLAKE3 root. **Show in folder** opens the chosen receive destination after verification; use an absolute destination path for this action. Errors explain invalid codes, unreachable peers, permission problems, and full disks.
 
-**Settings** offers dark/light themes, yellow/purple accents, a default download folder, and maximum sending speed in Mbps. Leave speed empty for unlimited; it applies to new sends. Preferences save automatically on this computer in local storage under `neutrino-desktop`. The advanced relay section explains that relay policy belongs to the daemon rather than a desktop toggle. See [Configuration](/api-reference/configuration).
+**Settings** offers dark/light themes, yellow/purple accents, a default download folder, and maximum sending speed in Mbps. Leave speed empty for unlimited; it applies to new sends. Appearance and transfer preferences save automatically on this computer in local storage under `neutrino-desktop`.
+
+**Connection** in Settings lets you choose **Auto** (recommended), **Direct only** or **Relay only**. Each option lists its advantages and risks. The text comes from the background service, so it always matches `neutrino transport`, and your choice is saved there and shared with the CLI. **Send** and **Receive** also have a per-transfer **Connection** override. Router port mapping is shown as *Coming later*. See [Connection modes](/api-reference/cli#connection-modes) and [Configuration](/api-reference/configuration).
 
 **About** shows the app version, Peretas Technologies attribution, website/docs links, and the audit warning. For daemon stop/status, use the [CLI](/api-reference/cli). Rerun the [installer](/installation) to update both binaries.
 
-Activity is session-local, not persistent history. Transfers completed before the app connects cannot be recovered from status alone: completed sessions disappear and status has no completion hash. Verification is shown only from a real completion event. The receive folder action opens the selected directory because IPC does not supply the final collision-renamed filename. A waiting outbound invitation cannot be cancelled until the daemon emits a session ID; this is a current API limitation.
+Activity is session-local, not persistent history. Transfers completed before the app connects cannot be recovered from status alone: completed sessions disappear and status has no completion hash. Verification is shown only from a real completion event. The receive folder action opens the selected directory because IPC does not supply the final collision-renamed filename.
 
 Sync, Git over Neutrino, and Mesh networking appear as coming later and are **not yet available**.
 
