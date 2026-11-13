@@ -17,7 +17,7 @@ Contribution rules additionally require the all-features Clippy check before cod
 <Step title="Bump versions together">
 For example, prepare the next patch after v0.4.0:
 ```bash
-sh scripts/bump-version.sh 0.3.2
+sh scripts/bump-version.sh 0.4.1
 ```
 The script updates workspace crates, desktop/Tauri configuration, and `Cargo.lock`. Review all changes, including website release constants and documentation. Preserve historical compatibility statements: relay rendezvous requires both peers on v0.3.0 or newer, even after a release-version bump.
 </Step>
@@ -25,14 +25,14 @@ The script updates workspace crates, desktop/Tauri configuration, and `Cargo.loc
 After review, commit the version change and push `main`:
 
 ```bash
-git commit -am "chore: release v0.3.2"
+git commit -am "chore: release v0.4.1"
 git push origin main
 ```
 
 When CI passes on `main` and the matching version tag does not exist, CI creates it and runs the release workflow automatically. A manually pushed `v*` tag also triggers release. The workflow rejects tags that do not match the Cargo version. Check the Actions runs before retrying or creating a tag manually.
 </Step>
 <Step title="Verify deployment and smoke test">
-The workflow builds `neutrino` and `neutrinod` for the five [targets](/installation), generates `SHA256SUMS`, uploads to `/var/www/neutrino-dl/v0.3.2/`, refreshes both installers, then updates `latest.txt`.
+The workflow builds `neutrino` and `neutrinod` for the five [targets](/installation), generates `SHA256SUMS`, uploads to `/var/www/neutrino-dl/v0.4.1/`, refreshes both installers, then updates `latest.txt`.
 
 Check the Actions run, reinstall on two machines, check versions, and transfer a folder. Confirm contents and verified completion on both sides. Test forced relay as well as direct connectivity when validating network changes.
 </Step>
